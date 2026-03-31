@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Acceso a Deportes Premium" />
-  <title>Login - Deportes Premium</title>
+  <meta name="description" content="Acceso a Deportes Premium 2.0" />
+  <title>Login - Deportes Premium 2.0</title>
 
   <link rel="icon" href="data:," />
 
@@ -340,6 +340,26 @@
     .login-subtext{
       text-align:center;
     }
+
+    .remember-container {
+  margin-top: 6px;
+}
+
+.remember-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.remember-checkbox {
+  width: 18px !important;
+  height: 18px !important;
+  min-height: unset !important;
+  max-width: 18px;
+  display: inline-block;
+  accent-color: #4f8cff;
+}
   </style>
 </head>
 <body>
@@ -378,6 +398,17 @@
             autocomplete="current-password"
             required
           />
+
+        <div class="field remember-container">
+          <label class="remember-label">
+            <input
+              id="rememberMe"
+              name="rememberMe"
+              type="checkbox"
+              class="remember-checkbox"
+            />
+            <span>Recordarme en este dispositivo</span>
+          </label>
         </div>
 
         <button class="login-btn" type="submit">Entrar al sistema</button>
@@ -403,23 +434,47 @@
 
     const loginForm = document.getElementById("loginForm");
     const errorBox = document.getElementById("errorBox");
-    
-    function escapeHtml(text) {
-      return String(text ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const rememberMeInput = document.getElementById("rememberMe");
+
+    function getDeviceId() {
+      let deviceId = localStorage.getItem("deviceId");
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem("deviceId", deviceId);
+      }
+      return deviceId;
     }
 
-      loginForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
+    function loadRememberedUsername() {
+      const savedUsername = localStorage.getItem("rememberedUsername");
+      const savedRememberMe = localStorage.getItem("rememberMe") === "true";
 
+      if (savedUsername) usernameInput.value = savedUsername;
+      if (savedRememberMe && rememberMeInput) rememberMeInput.checked = true;
+    }
+
+    function saveRememberedUsername() {
+      if (rememberMeInput && rememberMeInput.checked) {
+        localStorage.setItem("rememberedUsername", usernameInput.value.trim());
+        localStorage.setItem("rememberMe", "true");
+      } else {
+        localStorage.removeItem("rememberedUsername");
+        localStorage.removeItem("rememberMe");
+      }
+    }
+
+    loadRememberedUsername();
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
       errorBox.textContent = "";
-      
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value.trim();
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      const deviceId = getDeviceId();
+      const rememberMe = !!(rememberMeInput && rememberMeInput.checked);
 
       try {
         const response = await fetch("/login", {
@@ -427,26 +482,27 @@
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({
+            username,
+            password,
+            deviceId,
+            rememberMe
+          })
         });
 
         const data = await response.json();
 
         if (!response.ok) {
           errorBox.textContent = data.message || "No se pudo iniciar sesión";
-
-          if (data.code === "MAX_SESSIONS" && Array.isArray(data.sessions)) {
-            renderActiveSessions(data.sessions, username, password);
-          }
-
           return;
         }
 
+        saveRememberedUsername();
         window.location.href = "/";
       } catch (error) {
         errorBox.textContent = "Error de conexión con el servidor";
       }
     });
-  </script>
+</script>
 </body>
 </html>

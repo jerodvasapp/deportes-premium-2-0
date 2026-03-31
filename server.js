@@ -12,6 +12,12 @@ const DB_PATH = process.env.DB_PATH || "./database.db";
 
 const db = new sqlite3.Database(DB_PATH);
 
+db.serialize(() => {
+  db.run("PRAGMA journal_mode = WAL");
+  db.run("PRAGMA synchronous = NORMAL");
+  db.run("PRAGMA busy_timeout = 5000");
+});
+
 // =========================
 // Configuración general
 // =========================
@@ -29,6 +35,7 @@ app.set("trust proxy", 1);
 
 app.use(
   session({
+    name: "deportes_premium_2_0_sid",
     secret: process.env.SESSION_SECRET || "cambia-esto-por-una-clave-larga-y-segura",
     resave: false,
     saveUninitialized: false,
@@ -45,18 +52,6 @@ app.use(
 app.use((req, res, next) => {
   if (req.path === "/login.html" || req.path === "/admin.html") {
     res.setHeader("Cache-Control", "no-store");
-  }
-  next();
-});
-
-// Actualizar actividad de sesión si existe
-app.use((req, res, next) => {
-  if (req.session && req.session.user && req.sessionID) {
-    db.run(
-      "UPDATE user_sessions SET last_seen = CURRENT_TIMESTAMP WHERE session_id = ?",
-      [req.sessionID],
-      () => {}
-    );
   }
   next();
 });
@@ -116,6 +111,38 @@ db.serialize(() => {
       last_seen TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  db.run(
+    `ALTER TABLE user_sessions ADD COLUMN device_id TEXT`,
+    [],
+    (err) => {
+      if (err && !String(err.message || "").includes("duplicate column name")) {
+        console.error("Error agregando device_id:", err.message);
+      }
+    }
+  );
+
+  db.run(
+    `CREATE INDEX IF NOT EXISTS idx_user_sessions_user_device
+     ON user_sessions(user_id, device_id)`,
+    [],
+    (err) => {
+      if (err) {
+        console.error("Error creando índice user/device:", err.message);
+      }
+    }
+  );
+
+  db.run(
+    `CREATE INDEX IF NOT EXISTS idx_user_sessions_last_seen
+     ON user_sessions(last_seen)`,
+    [],
+    (err) => {
+      if (err) {
+        console.error("Error creando índice last_seen:", err.message);
+      }
+    }
+  );
 });
 
 // =========================
@@ -125,7 +152,7 @@ db.serialize(() => {
 function cleanupUserSessions() {
   db.run(`
     DELETE FROM user_sessions
-    WHERE datetime(last_seen) < datetime('now', '-2 hours')
+    WHERE datetime(last_seen) < datetime('now', '-30 days')
   `);
 }
 
@@ -290,7 +317,7 @@ createDefaultAdmin();
 // =========================
 
 const playlistCache = new Map();
-const PLAYLIST_CACHE_MS = 3000;
+const PLAYLIST_CACHE_MS = 6000;
 
 function getCachedPlaylist(url) {
   const entry = playlistCache.get(url);
@@ -310,6 +337,16 @@ function setCachedPlaylist(url, data) {
     timestamp: Date.now()
   });
 }
+
+setInterval(() => {
+  const now = Date.now();
+
+  for (const [url, entry] of playlistCache.entries()) {
+    if (now - entry.timestamp > PLAYLIST_CACHE_MS) {
+      playlistCache.delete(url);
+    }
+  }
+}, 30000);
 
 function isAllowedStreamHost(urlString) {
   try {
@@ -361,7 +398,7 @@ app.get("/proxy/hls", async (req, res) => {
     const cached = getCachedPlaylist(targetUrl);
     if (cached) {
       res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Cache-Control", "public, max-age=5");
       return res.send(cached);
     }
 
@@ -370,7 +407,7 @@ app.get("/proxy/hls", async (req, res) => {
         "User-Agent": "Mozilla/5.0",
         "Accept": "application/vnd.apple.mpegurl, application/x-mpegURL, */*"
       },
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(30000)
     });
 
     if (!upstream.ok) {
@@ -383,7 +420,7 @@ app.get("/proxy/hls", async (req, res) => {
     setCachedPlaylist(targetUrl, proxiedText);
 
     res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "public, max-age=5");
     return res.send(proxiedText);
   } catch (error) {
     console.error("Error en /proxy/hls:", error);
@@ -414,7 +451,7 @@ app.get("/proxy/segment", async (req, res) => {
 
     const upstream = await fetch(targetUrl, {
       headers,
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(20000)
     });
 
     if (!upstream.ok) {
@@ -438,7 +475,22 @@ app.get("/proxy/segment", async (req, res) => {
       return res.end();
     }
 
-    Readable.fromWeb(upstream.body).pipe(res);
+    const stream = Readable.fromWeb(upstream.body);
+
+    stream.on("error", (err) => {
+      console.error("Error de stream en /proxy/segment:", err.message || err);
+      if (!res.headersSent) {
+        res.status(504).end("Timeout en segmento");
+      } else {
+        res.end();
+      }
+    });
+
+    res.on("close", () => {
+      stream.destroy();
+    });
+
+    stream.pipe(res);
   } catch (error) {
     console.error("Error en /proxy/segment:", error);
     return res.status(500).send("Error cargando segmento HLS");
@@ -457,12 +509,18 @@ app.get("/proxy/file", async (req, res) => {
       return res.status(403).send("Host no permitido");
     }
 
+    const headers = {
+      "User-Agent": "Mozilla/5.0",
+      "Accept": "*/*"
+    };
+
+    if (req.headers.range) {
+      headers.Range = req.headers.range;
+    }
+
     const upstream = await fetch(targetUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "*/*"
-      },
-      signal: AbortSignal.timeout(15000)
+      headers,
+      signal: AbortSignal.timeout(20000)
     });
 
     if (!upstream.ok) {
@@ -470,13 +528,38 @@ app.get("/proxy/file", async (req, res) => {
     }
 
     const contentType = upstream.headers.get("content-type");
+    const contentLength = upstream.headers.get("content-length");
+    const acceptRanges = upstream.headers.get("accept-ranges");
+    const contentRange = upstream.headers.get("content-range");
+
     if (contentType) res.setHeader("Content-Type", contentType);
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+    if (acceptRanges) res.setHeader("Accept-Ranges", acceptRanges);
+    if (contentRange) res.setHeader("Content-Range", contentRange);
+
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.status(upstream.status);
 
     if (!upstream.body) {
       return res.end();
     }
 
-    Readable.fromWeb(upstream.body).pipe(res);
+    const stream = Readable.fromWeb(upstream.body);
+
+    stream.on("error", (err) => {
+      console.error("Error de stream en /proxy/file:", err.message || err);
+      if (!res.headersSent) {
+        res.status(504).end("Timeout en archivo");
+      } else {
+        res.end();
+      }
+    });
+
+    res.on("close", () => {
+      stream.destroy();
+    });
+
+    stream.pipe(res);
   } catch (error) {
     console.error("Error en /proxy/file:", error);
     return res.status(500).send("Error cargando archivo");
@@ -525,10 +608,30 @@ app.get("/admin.html", requireAdmin, (req, res) => {
 // =========================
 
 app.post("/login", loginRateLimit, (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, deviceId, rememberMe } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({
+      ok: false,
+      message: "Usuario y contraseña son obligatorios"
+    });
+  }
+
+  const safeDeviceId =
+    typeof deviceId === "string" && deviceId.trim()
+      ? deviceId.trim().slice(0, 120)
+      : null;
+
+  if (!safeDeviceId) {
+    return res.status(400).json({
+      ok: false,
+      message: "No se pudo identificar el dispositivo"
+    });
+  }
 
   db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
     if (err) {
+      console.error("Error buscando usuario:", err);
       return res.status(500).json({ ok: false, message: "Error del servidor" });
     }
 
@@ -565,139 +668,115 @@ app.post("/login", loginRateLimit, (req, res) => {
     db.serialize(() => {
       db.run("BEGIN IMMEDIATE TRANSACTION", (beginErr) => {
         if (beginErr) {
-          console.error("Error iniciando transacción de login:", beginErr);
+          console.error("Error iniciando transacción:", beginErr);
           return res.status(500).json({ ok: false, message: "No se pudo iniciar el login" });
         }
 
-        db.run(
-          "DELETE FROM user_sessions WHERE session_id = ?",
-          [req.sessionID],
-          (selfDeleteErr) => {
-            if (selfDeleteErr) {
-              return db.run("ROLLBACK", () => {
-                console.error("Error limpiando sesión actual antes del login:", selfDeleteErr);
-                return res.status(500).json({ ok: false, message: "Error preparando la sesión" });
-              });
+        const rollback = (message, error) => {
+          return db.run("ROLLBACK", () => {
+            if (error) console.error(message, error);
+            return res.status(500).json({ ok: false, message });
+          });
+        };
+
+        db.all(
+          `SELECT *
+           FROM user_sessions
+           WHERE user_id = ?
+           ORDER BY last_seen DESC, created_at DESC`,
+          [user.id],
+          (sessionErr, sessions) => {
+            if (sessionErr) {
+              return rollback("Error validando sesiones activas", sessionErr);
             }
 
-            db.all(
-              "SELECT * FROM user_sessions WHERE user_id = ? ORDER BY last_seen ASC, created_at ASC",
-              [user.id],
-              (sessionErr, sessions) => {
-                if (sessionErr) {
-                  return db.run("ROLLBACK", () => {
-                    return res.status(500).json({ ok: false, message: "Error validando sesiones activas" });
-                  });
+            const distinctDeviceIds = [
+              ...new Set(
+                sessions
+                  .map((s) => s.device_id)
+                  .filter(Boolean)
+              )
+            ];
+
+            const sameDeviceExists = distinctDeviceIds.includes(safeDeviceId);
+
+            if (user.role !== "admin" && !sameDeviceExists && distinctDeviceIds.length >= 2) {
+              const oldestSession = sessions[sessions.length - 1];
+
+              if (oldestSession && oldestSession.session_id) {
+                db.run(
+                  `DELETE FROM user_sessions WHERE session_id = ?`,
+                  [oldestSession.session_id],
+                  (deleteErr) => {
+                    if (deleteErr) {
+                      return rollback("Error eliminando sesión antigua", deleteErr);
+                    }
+                  }
+                );
+              }
+            }
+
+            db.run(
+              `DELETE FROM user_sessions WHERE user_id = ? AND device_id = ?`,
+              [user.id, safeDeviceId],
+              (deleteErr) => {
+                if (deleteErr) {
+                  return rollback("Error limpiando sesión previa del dispositivo", deleteErr);
                 }
 
-                const continueInsert = () => {
+                req.session.regenerate((regenErr) => {
+                  if (regenErr) {
+                    return rollback("No se pudo regenerar la sesión", regenErr);
+                  }
+
                   req.session.user = {
                     id: user.id,
                     username: user.username,
                     role: user.role
                   };
 
+                  req.session.deviceId = safeDeviceId;
+
+                  req.session.cookie.maxAge = rememberMe
+                    ? 1000 * 60 * 60 * 24 * 30
+                    : 1000 * 60 * 60 * 8;
+
                   db.run(
-                    `INSERT INTO user_sessions (user_id, username, session_id, ip_address, user_agent)
-                     VALUES (?, ?, ?, ?, ?)`,
-                    [user.id, user.username, req.sessionID, req.ip, req.get("user-agent")],
+                    `INSERT INTO user_sessions
+                     (user_id, username, session_id, device_id, ip_address, user_agent, last_seen)
+                     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                    [
+                      user.id,
+                      user.username,
+                      req.sessionID,
+                      safeDeviceId,
+                      req.ip,
+                      req.get("user-agent")
+                    ],
                     (insertErr) => {
                       if (insertErr) {
-                        return db.run("ROLLBACK", () => {
-                          console.error("Error guardando sesión activa:", insertErr);
-                          return res.status(500).json({
-                            ok: false,
-                            message: "No se pudo registrar la sesión"
-                          });
-                        });
+                        return rollback("No se pudo registrar la sesión", insertErr);
                       }
 
-                      const commitLogin = () => {
-                        db.run("COMMIT", (commitErr) => {
-                          if (commitErr) {
-                            return db.run("ROLLBACK", () => {
-                              console.error("Error confirmando login:", commitErr);
-                              return res.status(500).json({
-                                ok: false,
-                                message: "No se pudo completar el login"
-                              });
-                            });
-                          }
-
-                          db.run(
-                            `INSERT INTO access_logs (user_id, username, ip_address, user_agent, success)
-                             VALUES (?, ?, ?, ?, ?)`,
-                            [user.id, user.username, req.ip, req.get("user-agent"), 1]
-                          );
-
-                          return res.json({ ok: true, message: "Login correcto" });
-                        });
-                      };
-
-                      if (user.role === "admin") {
-                        return commitLogin();
-                      }
-
-                      db.run(
-                        `DELETE FROM user_sessions
-                         WHERE user_id = ?
-                         AND session_id NOT IN (
-                           SELECT session_id
-                           FROM user_sessions
-                           WHERE user_id = ?
-                           ORDER BY last_seen DESC, created_at DESC
-                           LIMIT 2
-                         )`,
-                        [user.id, user.id],
-                        (trimErr) => {
-                          if (trimErr) {
-                            return db.run("ROLLBACK", () => {
-                              console.error("Error recortando sesiones sobrantes:", trimErr);
-                              return res.status(500).json({
-                                ok: false,
-                                message: "No se pudo ajustar el límite de sesiones"
-                              });
-                            });
-                          }
-
-                          return commitLogin();
+                      db.run("COMMIT", (commitErr) => {
+                        if (commitErr) {
+                          return rollback("No se pudo completar el login", commitErr);
                         }
-                      );
-                    }
-                  );
-                };
 
-                if (user.role === "admin") {
-                  return continueInsert();
-                }
+                        db.run(
+                          `INSERT INTO access_logs (user_id, username, ip_address, user_agent, success)
+                           VALUES (?, ?, ?, ?, ?)`,
+                          [user.id, user.username, req.ip, req.get("user-agent"), 1]
+                        );
 
-                const maxSessions = 2;
-                const sessionsToDelete = Math.max(0, sessions.length - (maxSessions - 1));
-
-                if (sessionsToDelete <= 0) {
-                  return continueInsert();
-                }
-
-                const oldSessions = sessions.slice(0, sessionsToDelete);
-                const idsToDelete = oldSessions.map((s) => s.session_id);
-                const placeholders = idsToDelete.map(() => "?").join(",");
-
-                db.run(
-                  `DELETE FROM user_sessions WHERE session_id IN (${placeholders})`,
-                  idsToDelete,
-                  (deleteErr) => {
-                    if (deleteErr) {
-                      return db.run("ROLLBACK", () => {
-                        return res.status(500).json({
-                          ok: false,
-                          message: "Error liberando sesiones antiguas"
+                        return res.json({
+                          ok: true,
+                          message: "Login correcto"
                         });
                       });
                     }
-
-                    return continueInsert();
-                  }
-                );
+                  );
+                });
               }
             );
           }
@@ -721,6 +800,12 @@ app.get("/api/session", (req, res) => {
           return res.status(401).json({ loggedIn: false });
         });
       }
+
+      db.run(
+        "UPDATE user_sessions SET last_seen = CURRENT_TIMESTAMP WHERE session_id = ?",
+        [req.sessionID],
+        () => {}
+      );
 
       db.get(
         "SELECT start_date, end_date, expires_at, status FROM users WHERE id = ?",
@@ -1069,6 +1154,37 @@ app.get("/admin/active-sessions", requireAdmin, (req, res) => {
   );
 });
 
+app.get("/admin/connected-users-summary", requireAdmin, (req, res) => {
+  db.all(
+    `
+    SELECT 
+      username,
+      ip_address,
+      user_agent,
+      created_at,
+      last_seen
+    FROM user_sessions
+    WHERE datetime(last_seen) >= datetime('now', '-60 seconds')
+    ORDER BY last_seen DESC
+    `,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ ok: false, message: "Error al obtener conectados" });
+      }
+
+      const uniqueUsers = [...new Set(rows.map(r => r.username))];
+
+      res.json({
+        ok: true,
+        connectedSessions: rows.length,
+        connectedUsers: uniqueUsers.length,
+        sessions: rows
+      });
+    }
+  );
+});
+
 // =========================
 // Error handler
 // =========================
@@ -1076,6 +1192,14 @@ app.get("/admin/active-sessions", requireAdmin, (req, res) => {
 app.use((err, req, res, next) => {
   console.error("ERROR NO CONTROLADO:", err);
   res.status(500).send("Internal Server Error");
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("uncaughtException:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("unhandledRejection:", reason);
 });
 
 // =========================

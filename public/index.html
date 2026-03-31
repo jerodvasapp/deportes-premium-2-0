@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Portal de streaming de Deportes Premium" />
-  <title>🎮 Deportes Premium</title>
+  <title>Deportes Premium 2.0</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
 <body>
   <header>
     <div class="brand">
-      <img src="img/logo.png" alt="Deportes Premium" class="site-logo">
+      <img src="img/logo.png" alt="Deportes Premium 2.0" class="site-logo">
       <p>Streaming deportivo en vivo</p>
     </div>
 
@@ -108,7 +108,7 @@
         </div>
 
         <div id="playerPanel">
-          <h2 id="currentTitle">Deportes Premium</h2>
+          <h2 id="currentTitle">Deportes Premium 2.0</h2>
 
           <div id="currentMeta">
             Elige un canal para comenzar la reproducción.
@@ -133,6 +133,13 @@
       <div id="categoriaContainerDerecha"></div>
     </aside>
   </main>
+
+  <div id="fullscreenChannelTitle" class="fullscreen-channel-title">Sin canal</div>
+
+  <aside id="fullscreenMiniChannels" class="fullscreen-mini-channels">
+    <div class="fullscreen-mini-header">Canales</div>
+    <div id="fullscreenMiniChannelsList"></div>
+  </aside>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="app.js"></script>

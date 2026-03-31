@@ -1,8 +1,66 @@
-
 const userBadge = document.getElementById("userBadge");
 const adminLink = document.getElementById("adminLink");
 
 let demoTimerInterval = null;
+let isLoadingChannel = false;
+let currentHls = null;
+let userInteracted = false;
+let infoTimeout = null;
+let searchTimeout = null;
+let iptvBarTimer = null;
+let activeChannel = null;
+let stalledRefreshTimer = null;
+let demoExpired = false;
+let serviceExpired = false;
+let currentChannelUrl = null;
+let miniChannelsHideTimer = null;
+let fullscreenControlsHideTimer = null;
+
+const video = document.getElementById("streamVideo");
+if (video) {
+  video.preload = "metadata";
+}
+
+const leftContainer = document.getElementById("categoriaContainer");
+const rightContainer = document.getElementById("categoriaContainerDerecha");
+const searchInput = document.getElementById("searchInput");
+const channelInfo = document.getElementById("channelInfo");
+const currentChannelName = document.getElementById("currentChannelName");
+const currentChannelCategory = document.getElementById("currentChannelCategory");
+const iptvBottomBar = document.getElementById("iptvBottomBar");
+const iptvChannelName = document.getElementById("iptvChannelName");
+const iptvChannelCategory = document.getElementById("iptvChannelCategory");
+const iptvStatus = document.getElementById("iptvStatus");
+const iptvClock = document.getElementById("iptvClock");
+const streamContainer = document.getElementById("streamContainer");
+const fullscreenMiniChannelsList = document.getElementById("fullscreenMiniChannelsList");
+const fullscreenChannelTitle = document.getElementById("fullscreenChannelTitle");
+const topButtons = document.querySelector(".top-buttons");
+
+let channelsToggleBtn = null;
+let prevChannelBtn = null;
+let nextChannelBtn = null;
+let refreshBtn = null;
+let soundBtn = null;
+let fullscreenBtn = null;
+
+if (topButtons) {
+  topButtons.innerHTML = `
+    <button id="channelsToggleBtn" type="button">Canales</button>
+    <button id="prevChannelBtn" type="button">Anterior</button>
+    <button id="nextChannelBtn" type="button">Siguiente</button>
+    <button id="refreshBtn" type="button">Recargar</button>
+    <button id="soundBtn" type="button">Audio off</button>
+    <button id="fullscreenBtn" type="button">Pantalla completa</button>
+  `;
+
+  channelsToggleBtn = document.getElementById("channelsToggleBtn");
+  prevChannelBtn = document.getElementById("prevChannelBtn");
+  nextChannelBtn = document.getElementById("nextChannelBtn");
+  refreshBtn = document.getElementById("refreshBtn");
+  soundBtn = document.getElementById("soundBtn");
+  fullscreenBtn = document.getElementById("fullscreenBtn");
+}
 
 async function checkSession() {
   try {
@@ -40,70 +98,69 @@ async function checkSession() {
 
     if (data.user.expires_at && popup && texto && demoTimer && demoBadge) {
       const expires = new Date(data.user.expires_at);
-      
+
       texto.textContent = "Tiempo restante del demo:";
       popup.hidden = false;
       demoBadge.hidden = false;
-      
+
       if (demoTimerInterval) {
         clearInterval(demoTimerInterval);
       }
-      
+
       const updateDemoTimer = () => {
         const now = new Date();
         const diff = expires - now;
-        
-      if (diff <= 0) {
-        demoExpired = true;
 
-        demoTimer.textContent = "Demo finalizado";
-        demoBadge.textContent = "Demo finalizado";
-        demoBadge.className = "demo-badge demo-danger";
+        if (diff <= 0) {
+          demoExpired = true;
 
-        destroyCurrentHls();
+          demoTimer.textContent = "Demo finalizado";
+          demoBadge.textContent = "Demo finalizado";
+          demoBadge.className = "demo-badge demo-danger";
 
-        const video = document.getElementById("streamVideo");
-        if (video) {
-          video.pause();
-          video.removeAttribute("src");
-          video.load();
-          video.controls = false;
+          destroyCurrentHls();
+
+          if (video) {
+            video.pause();
+            video.removeAttribute("src");
+            video.load();
+            video.controls = false;
+          }
+
+          document.querySelectorAll(".canales button").forEach((btn) => {
+            btn.disabled = true;
+          });
+
+          texto.textContent = "❌ Tu demo ha finalizado. Contacta a tu vendedor.";
+          popup.hidden = false;
+
+          if (demoTimerInterval) {
+            clearInterval(demoTimerInterval);
+            demoTimerInterval = null;
+          }
+
+          return;
         }
 
-        document.querySelectorAll(".canales button").forEach((btn) => {
-          btn.disabled = true;
-        });
+        const totalSeconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
 
-        texto.textContent = "❌ Tu demo ha finalizado. Contacta a tu vendedor.";
-        popup.hidden = false;
+        demoTimer.textContent = `${minutes}m ${seconds}s`;
+        demoBadge.textContent = `Demo: ${minutes}m ${String(seconds).padStart(2, "0")}s`;
 
-        if (demoTimerInterval) {
-          clearInterval(demoTimerInterval);
-          demoTimerInterval = null;
+        if (minutes < 5) {
+          demoBadge.className = "demo-badge demo-danger";
+        } else if (minutes < 10) {
+          demoBadge.className = "demo-badge demo-warning";
+        } else {
+          demoBadge.className = "demo-badge";
         }
+      };
 
-        return;
-      }
-
-    const totalSeconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    demoTimer.textContent = `${minutes}m ${seconds}s`;
-    demoBadge.textContent = `Demo: ${minutes}m ${String(seconds).padStart(2, "0")}s`;
-
-    if (minutes < 5) {
-      demoBadge.className = "demo-badge demo-danger";
-    } else if (minutes < 10) {
-      demoBadge.className = "demo-badge demo-warning";
-    } else {
-      demoBadge.className = "demo-badge";
+      updateDemoTimer();
+      demoTimerInterval = setInterval(updateDemoTimer, 1000);
     }
-  };
-
-  updateDemoTimer();
-  demoTimerInterval = setInterval(updateDemoTimer, 1000);
-}
 
     if (data.user.end_date && popup && texto && !data.user.expires_at) {
       const hoy = new Date();
@@ -111,19 +168,18 @@ async function checkSession() {
       const dias = Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
 
       if (dias === 1) {
-        texto.textContent = "⚠️ Tu servicio vence mañana. Contacta a tu Vendedor.";
+        texto.textContent = "⚠️ Tu servicio vence mañana. Contacta a tu vendedor.";
         popup.hidden = false;
       }
 
       if (dias <= 0) {
         serviceExpired = true;
 
-        texto.textContent = "❌ Tu servicio está vencido. Contacta a tu Vendedor.";
+        texto.textContent = "❌ Tu servicio está vencido. Contacta a tu vendedor.";
         popup.hidden = false;
 
         destroyCurrentHls();
 
-        const video = document.getElementById("streamVideo");
         if (video) {
           video.pause();
           video.removeAttribute("src");
@@ -157,22 +213,22 @@ async function checkSession() {
 
 checkSession();
 
-
 function proxifyChannelUrl(url, type) {
   if (!url || typeof url !== "string") return url;
 
-  const isHttp = url.startsWith("http://");
-  const isHls = type === "hls" || url.toLowerCase().includes(".m3u8");
+  const lowerUrl = url.toLowerCase();
+  const isHls = type === "hls" || lowerUrl.includes(".m3u8");
+  const mustProxy = lowerUrl.includes("167.17.67.240");
 
-  if (isHttp && isHls) {
+  if (!mustProxy) {
+    return url;
+  }
+
+  if (isHls) {
     return "/proxy/hls?url=" + encodeURIComponent(url);
   }
 
-  if (isHttp) {
-    return "/proxy/file?url=" + encodeURIComponent(url);
-  }
-
-  return url;
+  return "/proxy/file?url=" + encodeURIComponent(url);
 }
 
 const CHANNELS = [
@@ -261,33 +317,6 @@ const CHANNEL_LOGOS = [
   { match: "tyc", file: "img/tyc.png", alt: "tyc" }
 ];
 
-let currentHls = null;
-let userInteracted = false;
-let infoTimeout = null;
-let searchTimeout = null;
-let iptvBarTimer = null;
-let activeChannel = null;
-let stalledRefreshTimer = null;
-let demoExpired = false;
-let serviceExpired = false;
-
-const video = document.getElementById("streamVideo");
-const leftContainer = document.getElementById("categoriaContainer");
-const rightContainer = document.getElementById("categoriaContainerDerecha");
-const searchInput = document.getElementById("searchInput");
-const channelInfo = document.getElementById("channelInfo");
-const currentChannelName = document.getElementById("currentChannelName");
-const currentChannelCategory = document.getElementById("currentChannelCategory");
-const fullscreenBtn = document.getElementById("fullscreenBtn");
-const iptvBottomBar = document.getElementById("iptvBottomBar");
-const iptvChannelName = document.getElementById("iptvChannelName");
-const iptvChannelCategory = document.getElementById("iptvChannelCategory");
-const iptvStatus = document.getElementById("iptvStatus");
-const iptvClock = document.getElementById("iptvClock");
-const volverBtn = document.getElementById("volverBtn");
-const soundBtn = document.getElementById("soundBtn");
-const refreshBtn = document.getElementById("refreshBtn");
-
 function capitalize(text) {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
 }
@@ -319,24 +348,24 @@ function getChannelLogo(channelName) {
 function showIptvBar() {
   if (!iptvBottomBar) return;
 
+  // 🔥 SOLO ocultar en fullscreen
+  if (!document.body.classList.contains("fullscreen-active")) {
+    iptvBottomBar.classList.remove("iptv-hidden");
+    return;
+  }
+
   iptvBottomBar.classList.remove("iptv-hidden");
 
   clearTimeout(iptvBarTimer);
 
-  if (document.body.classList.contains("fullscreen-active")) {
-    iptvBarTimer = setTimeout(() => {
-      hideIptvBar();
-    }, 3000);
-  }
+  iptvBarTimer = setTimeout(() => {
+    hideIptvBar();
+  }, 3000);
 }
 
 function hideIptvBar() {
   if (!iptvBottomBar) return;
   iptvBottomBar.classList.add("iptv-hidden");
-}
-
-function handleIptvBarInteraction() {
-  showIptvBar();
 }
 
 function setIptvStatus(text, className = "") {
@@ -373,6 +402,10 @@ function updateChannelInfo(name, category) {
     channelInfo.style.display = "block";
   }
 
+  if (fullscreenChannelTitle) {
+    fullscreenChannelTitle.textContent = name;
+  }
+
   updateIptvInfo(name, capitalize(category));
   setIptvStatus("EN VIVO", "iptv-status-live");
 
@@ -387,7 +420,6 @@ function updateChannelInfo(name, category) {
 function showLoadingIndicator() {
   hideLoadingIndicator();
 
-  const streamContainer = document.getElementById("streamContainer");
   if (!streamContainer) return;
 
   const loader = document.createElement("div");
@@ -407,6 +439,14 @@ function destroyCurrentHls() {
     currentHls.destroy();
     currentHls = null;
   }
+
+  currentChannelUrl = null;
+
+  if (video) {
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+  }
 }
 
 function setPlayerMeta(channel) {
@@ -420,106 +460,176 @@ function setActiveChannel(button) {
   button.focus();
 }
 
+function markMiniChannelActive(channelName) {
+  if (!fullscreenMiniChannelsList) return;
+
+  fullscreenMiniChannelsList.querySelectorAll(".fullscreen-mini-channel-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.channelName === channelName);
+  });
+}
+
+function getCurrentChannelIndex() {
+  if (!activeChannel) return -1;
+  return CHANNELS_PROXIED.findIndex((c) => c.name === activeChannel.name);
+}
+
+function loadPreviousChannel() {
+  const currentIndex = getCurrentChannelIndex();
+  if (currentIndex <= 0) return;
+
+  const previousChannel = CHANNELS_PROXIED[currentIndex - 1];
+  if (previousChannel) {
+    loadStream(previousChannel);
+  }
+}
+
+function loadNextChannel() {
+  const currentIndex = getCurrentChannelIndex();
+  if (currentIndex < 0 || currentIndex >= CHANNELS_PROXIED.length - 1) return;
+
+  const nextChannel = CHANNELS_PROXIED[currentIndex + 1];
+  if (nextChannel) {
+    loadStream(nextChannel);
+  }
+}
+
 function attachNativeVideo(channel) {
+  if (!video) return;
+
   video.src = channel.url;
   video.load();
 
   const onCanPlay = () => {
     video.removeEventListener("canplay", onCanPlay);
     hideLoadingIndicator();
-
     video.play().catch(() => {});
   };
 
   video.addEventListener("canplay", onCanPlay);
 }
 
-function loadStream(channel) {
+function showMiniChannels() {
+  if (!document.body.classList.contains("fullscreen-active")) return;
+  document.body.classList.add("show-mini-channels");
+}
+
+function hideMiniChannels() {
+  document.body.classList.remove("show-mini-channels");
+}
+
+function showFullscreenControls() {
+  if (!document.body.classList.contains("fullscreen-active")) return;
+
+  document.body.classList.add("show-fullscreen-controls");
+
+  clearTimeout(fullscreenControlsHideTimer);
+  fullscreenControlsHideTimer = setTimeout(() => {
+    document.body.classList.remove("show-fullscreen-controls");
+  }, 2500);
+}
+
+function hideFullscreenControls() {
+  clearTimeout(fullscreenControlsHideTimer);
+  document.body.classList.remove("show-fullscreen-controls");
+}
+
+function updateSoundButtonLabel() {
+  if (!soundBtn || !video) return;
+  soundBtn.textContent = video.muted ? "Audio off" : "Audio on";
+}
+
+function updateFullscreenButtonLabel() {
+  if (!fullscreenBtn) return;
+  fullscreenBtn.textContent = document.fullscreenElement
+    ? "Salir full"
+    : "Pantalla completa";
+}
+
+async function loadStream(channel) {
   if (!video) return;
   if (demoExpired || serviceExpired) return;
+  if (isLoadingChannel) return;
+  if (currentChannelUrl === channel.url) return;
 
-  activeChannel = channel;
+  isLoadingChannel = true;
 
-if (stalledRefreshTimer) {
-  clearTimeout(stalledRefreshTimer);
-  stalledRefreshTimer = null;
-}
+  try {
+    activeChannel = channel;
 
-  showLoadingIndicator();
-  destroyCurrentHls();
-
-  video.pause();
-  video.muted = !userInteracted;
-
-  setPlayerMeta(channel);
-  updateChannelInfo(channel.name, channel.category);
-
-  if (window.innerWidth <= 768) {
-  setTimeout(async () => {
-    try {
-      if (video.requestFullscreen) {
-        await video.requestFullscreen();
-      } else if (video.webkitEnterFullscreen) {
-        video.webkitEnterFullscreen();
-      }
-    } catch (error) {}
-  }, 500);
-}
-
-  const isHls = channel.type === "hls" || channel.url.toLowerCase().includes(".m3u8");
-
-  if (isHls) {
-    if (window.Hls && Hls.isSupported()) {
-      currentHls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 90,
-        maxBufferLength: 60,
-        maxMaxBufferLength: 120,
-        liveSyncDurationCount: 4,
-        liveMaxLatencyDurationCount: 8,
-        fragLoadingTimeOut: 20000,
-        manifestLoadingTimeOut: 15000,
-        levelLoadingTimeOut: 15000,
-        fragLoadingRetryDelay: 1000,
-        manifestLoadingRetryDelay: 1000,
-        levelLoadingRetryDelay: 1000
-      });
-
-      currentHls.loadSource(channel.url);
-      currentHls.attachMedia(video);
-
-      currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
-        hideLoadingIndicator();
-        video.play().catch(() => {});
-      });
-
-      currentHls.on(Hls.Events.ERROR, (event, data) => {
-        if (!data.fatal) return;
-
-        hideLoadingIndicator();
-        setIptvStatus("ERROR", "iptv-status-error");
-
-        switch (data.type) {
-          case Hls.ErrorTypes.NETWORK_ERROR:
-            currentHls.startLoad();
-            break;
-          case Hls.ErrorTypes.MEDIA_ERROR:
-            currentHls.recoverMediaError();
-            break;
-          default:
-            destroyCurrentHls();
-            alert("No se pudo cargar el stream HLS. Revisa la URL del canal.");
-        }
-      });
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      attachNativeVideo(channel);
-    } else {
-      hideLoadingIndicator();
-      alert("Este navegador no soporta HLS.");
+    if (stalledRefreshTimer) {
+      clearTimeout(stalledRefreshTimer);
+      stalledRefreshTimer = null;
     }
-  } else {
-    attachNativeVideo(channel);
+
+    showLoadingIndicator();
+    destroyCurrentHls();
+    currentChannelUrl = channel.url;
+
+    video.pause();
+    video.muted = !userInteracted;
+
+    setPlayerMeta(channel);
+    updateChannelInfo(channel.name, channel.category);
+    markMiniChannelActive(channel.name);
+    updateSoundButtonLabel();
+
+    const isHls = channel.type === "hls" || channel.url.toLowerCase().includes(".m3u8");
+
+    if (isHls) {
+      if (window.Hls && Hls.isSupported()) {
+        currentHls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          backBufferLength: 45,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          liveSyncDurationCount: 4,
+          liveMaxLatencyDurationCount: 8,
+          fragLoadingTimeOut: 15000,
+          manifestLoadingTimeOut: 10000,
+          levelLoadingTimeOut: 10000,
+          fragLoadingRetryDelay: 1500,
+          manifestLoadingRetryDelay: 1500,
+          levelLoadingRetryDelay: 1500
+        });
+
+        currentHls.loadSource(channel.url);
+        currentHls.attachMedia(video);
+
+        currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
+          hideLoadingIndicator();
+          video.play().catch(() => {});
+        });
+
+        currentHls.on(Hls.Events.ERROR, (event, data) => {
+          if (!data.fatal) return;
+
+          hideLoadingIndicator();
+          setIptvStatus("ERROR", "iptv-status-error");
+
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              currentHls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              currentHls.recoverMediaError();
+              break;
+            default:
+              destroyCurrentHls();
+              alert("No se pudo cargar el stream HLS. Revisa la URL del canal.");
+          }
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        attachNativeVideo(channel);
+      } else {
+        hideLoadingIndicator();
+        alert("Este navegador no soporta HLS.");
+      }
+    } else {
+      attachNativeVideo(channel);
+    }
+  } finally {
+    isLoadingChannel = false;
   }
 }
 
@@ -544,6 +654,9 @@ if (video) {
     setIptvStatus("FIN", "iptv-status-pause");
   });
 
+  video.addEventListener("volumechange", updateSoundButtonLabel);
+  video.addEventListener("loadedmetadata", updateSoundButtonLabel);
+
   video.addEventListener("error", () => {
     setIptvStatus("ERROR", "iptv-status-error");
     hideLoadingIndicator();
@@ -551,9 +664,11 @@ if (video) {
     if (activeChannel) {
       setTimeout(() => {
         destroyCurrentHls();
-        video.pause();
-        video.removeAttribute("src");
-        video.load();
+        if (video) {
+          video.pause();
+          video.removeAttribute("src");
+          video.load();
+        }
         loadStream(activeChannel);
       }, 2000);
     }
@@ -615,6 +730,14 @@ function renderGroupedChannels(channels) {
       }
     };
 
+    function ensureIptvVisible() {
+      if (!iptvBottomBar) return;
+
+      if (!document.body.classList.contains("fullscreen-active")) {
+        iptvBottomBar.classList.remove("iptv-hidden");
+      }
+    }
+
     header.addEventListener("click", toggle);
     header.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -636,13 +759,13 @@ function renderGroupedChannels(channels) {
         button.innerHTML = `
           <span class="channel-btn-content">
             <img src="${logo.file}" alt="${logo.alt}" class="channel-logo">
-            <span class="channel-label">${channel.type === "video" ? "⚽" : ""}${channel.name}</span>
+            <span class="channel-label">${channel.name}</span>
           </span>
         `;
       } else {
         button.innerHTML = `
           <span class="channel-btn-content">
-            <span class="channel-label">${channel.type === "video" ? "⚽" : ""}${channel.name}</span>
+            <span class="channel-label">${channel.name}</span>
           </span>
         `;
       }
@@ -691,31 +814,44 @@ async function toggleFullscreen() {
   if (!fullscreenBtn) return;
 
   if (!document.fullscreenElement) {
-    document.body.classList.add("fullscreen-active");
-    fullscreenBtn.textContent = "Salir de completa";
-
     try {
       await document.documentElement.requestFullscreen();
+      document.body.classList.add("fullscreen-active");
     } catch (error) {
       console.warn("No se pudo activar pantalla completa:", error);
     }
-
-    showIptvBar();
   } else {
-    document.body.classList.remove("fullscreen-active");
-    fullscreenBtn.textContent = "Pantalla completa";
-
     try {
       await document.exitFullscreen();
     } catch (error) {
       console.warn("No se pudo salir de pantalla completa:", error);
     }
+  }
 
-    clearTimeout(iptvBarTimer);
-    if (iptvBottomBar) {
-      iptvBottomBar.classList.remove("iptv-hidden");
+  updateFullscreenButtonLabel();
+}
+
+async function toggleFullscreen() {
+  if (!fullscreenBtn) return;
+
+  if (!document.fullscreenElement) {
+    try {
+      await document.documentElement.requestFullscreen();
+      document.body.classList.add("fullscreen-active");
+      hideMiniChannels();
+      showFullscreenControls();
+    } catch (error) {
+      console.warn("No se pudo activar pantalla completa:", error);
+    }
+  } else {
+    try {
+      await document.exitFullscreen();
+    } catch (error) {
+      console.warn("No se pudo salir de pantalla completa:", error);
     }
   }
+
+  updateFullscreenButtonLabel();
 }
 
 if (fullscreenBtn) {
@@ -727,34 +863,33 @@ document.addEventListener("fullscreenchange", () => {
 
   if (!document.fullscreenElement) {
     document.body.classList.remove("fullscreen-active");
-    fullscreenBtn.textContent = "Pantalla completa";
+    document.body.classList.remove("show-mini-channels");
+    document.body.classList.remove("show-fullscreen-controls");
     clearTimeout(iptvBarTimer);
-    if (iptvBottomBar) {
-      iptvBottomBar.classList.remove("iptv-hidden");
-    }
+    clearTimeout(miniChannelsHideTimer);
+    clearTimeout(fullscreenControlsHideTimer);
   } else {
-    showIptvBar();
+    document.body.classList.add("fullscreen-active");
+    hideMiniChannels();
+    showFullscreenControls();
   }
-});
 
-if (volverBtn) {
-  volverBtn.addEventListener("click", () => {
-    if (history.length > 1) {
-      history.back();
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  });
-}
+  updateFullscreenButtonLabel();
+});
 
 if (soundBtn && video) {
   soundBtn.addEventListener("click", () => {
     if (demoExpired || serviceExpired) return;
 
     userInteracted = true;
-    video.muted = false;
-    video.volume = 1;
+    video.muted = !video.muted;
+
+    if (!video.muted && video.volume === 0) {
+      video.volume = 1;
+    }
+
     video.play().catch(() => {});
+    updateSoundButtonLabel();
   });
 }
 
@@ -766,8 +901,29 @@ if (refreshBtn && video) {
     video.pause();
     video.removeAttribute("src");
     video.load();
-
     loadStream(activeChannel);
+  });
+}
+
+if (channelsToggleBtn) {
+  channelsToggleBtn.addEventListener("click", () => {
+    if (document.body.classList.contains("show-mini-channels")) {
+      hideMiniChannels();
+    } else {
+      showMiniChannels();
+    }
+  });
+}
+
+if (prevChannelBtn) {
+  prevChannelBtn.addEventListener("click", () => {
+    loadPreviousChannel();
+  });
+}
+
+if (nextChannelBtn) {
+  nextChannelBtn.addEventListener("click", () => {
+    loadNextChannel();
   });
 }
 
@@ -776,66 +932,11 @@ function handleFirstInteraction() {
   userInteracted = true;
   video.muted = false;
   video.play().catch(() => {});
+  updateSoundButtonLabel();
 }
 
 document.body.addEventListener("click", handleFirstInteraction, { once: true });
 document.body.addEventListener("touchend", handleFirstInteraction, { once: true });
-
-function getFocusableElements() {
-  return Array.from(
-    document.querySelectorAll(
-      "#volverBtn, #fullscreenBtn, #infoBtn, #soundBtn, #searchInput, .categoria h3, .canales.show button"
-    )
-  ).filter((el) => !el.disabled && el.offsetParent !== null);
-}
-
-function moveFocus(direction) {
-  const items = getFocusableElements();
-  const currentIndex = items.indexOf(document.activeElement);
-
-  if (currentIndex === -1) {
-    if (items.length) items[0].focus();
-    return;
-  }
-
-  if (direction === "next") {
-    const next = items[currentIndex + 1] || items[0];
-    next.focus();
-  }
-
-  if (direction === "prev") {
-    const prev = items[currentIndex - 1] || items[items.length - 1];
-    prev.focus();
-  }
-}
-
-document.addEventListener("keydown", (event) => {
-  switch (event.key) {
-    case "ArrowDown":
-    case "ArrowRight":
-      event.preventDefault();
-      moveFocus("next");
-      break;
-
-    case "ArrowUp":
-    case "ArrowLeft":
-      event.preventDefault();
-      moveFocus("prev");
-      break;
-
-    case "Enter":
-      if (document.activeElement && typeof document.activeElement.click === "function") {
-        document.activeElement.click();
-      }
-      break;
-  }
-});
-
-window.addEventListener("load", () => {
-  if (volverBtn) {
-    volverBtn.focus();
-  }
-});
 
 function startClock() {
   if (!iptvClock) return;
@@ -855,9 +956,48 @@ function startClock() {
 
 startClock();
 
-document.addEventListener("mousemove", handleIptvBarInteraction);
-document.addEventListener("keydown", handleIptvBarInteraction);
-document.addEventListener("touchstart", handleIptvBarInteraction);
-document.addEventListener("click", handleIptvBarInteraction);
+function renderFullscreenMiniChannels() {
+  if (!fullscreenMiniChannelsList) return;
 
+  fullscreenMiniChannelsList.innerHTML = CHANNELS_PROXIED.map((channel) => `
+    <button class="fullscreen-mini-channel-btn" data-channel-name="${channel.name}">
+      ${channel.name}
+    </button>
+  `).join("");
+
+  fullscreenMiniChannelsList.querySelectorAll(".fullscreen-mini-channel-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const channel = CHANNELS_PROXIED.find((c) => c.name === btn.dataset.channelName);
+      if (!channel) return;
+
+      loadStream(channel);
+      markMiniChannelActive(channel.name);
+      hideMiniChannels();
+    });
+  });
+
+  if (streamContainer) {
+    streamContainer.addEventListener("mousemove", () => {
+      if (document.body.classList.contains("fullscreen-active")) {
+        showFullscreenControls();
+      }
+    });
+
+    streamContainer.addEventListener("touchstart", () => {
+      if (document.body.classList.contains("fullscreen-active")) {
+        showFullscreenControls();
+      }
+    }, { passive: true });
+
+    streamContainer.addEventListener("click", () => {
+      if (document.body.classList.contains("fullscreen-active")) {
+        showFullscreenControls();
+      }
+    });
+  }
+}
+
+renderFullscreenMiniChannels();
 renderGroupedChannels(CHANNELS_PROXIED);
+updateSoundButtonLabel();
+updateFullscreenButtonLabel();
