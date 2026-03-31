@@ -1206,6 +1206,12 @@ process.on("unhandledRejection", (reason) => {
 // Servidor
 // =========================
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+app.get("/health", (req, res) => {
+  res.status(200).send("ok");
+});
+
+const HOST = "0.0.0.0";
+
+app.listen(PORT, HOST, () => {
+  console.log(`Servidor corriendo en ${HOST}:${PORT}`);
 });
