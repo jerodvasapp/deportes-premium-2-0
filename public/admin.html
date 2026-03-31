@@ -118,6 +118,35 @@
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(78, 132, 255, 0.25);
 }
+
+.admin-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.table-actions button,
+.admin-actions button {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.table-actions button:hover,
+.admin-actions button:hover {
+  background: rgba(255,255,255,0.15);
+}
   </style>
 </head>
 
@@ -147,14 +176,35 @@
   <!-- CREAR USUARIO -->
   <div class="admin-card">
     <h3>Crear Usuario</h3>
+
+    <label for="newUser">Usuario</label>
     <input id="newUser" placeholder="Usuario" />
+
+    <label for="newPass">Contraseña</label>
     <input id="newPass" placeholder="Contraseña" type="password" />
+
     <label for="newRole">Rol</label>
     <select id="newRole" aria-label="Seleccionar rol de usuario">
       <option value="user">Usuario</option>
       <option value="admin">Admin</option>
     </select>
-    <button onclick="createUser()">Crear</button>
+
+    <label for="newStartDate">Fecha inicio</label>
+    <input id="newStartDate" type="date" />
+
+    <label for="newEndDate">Fecha fin</label>
+    <input id="newEndDate" type="date" />
+
+    <label for="newStatus">Estado</label>
+    <select id="newStatus" aria-label="Seleccionar estado de usuario">
+      <option value="activo">Activo</option>
+      <option value="suspendido">Suspendido</option>
+    </select>
+
+    <div class="admin-actions">
+      <button onclick="createUser()">Crear usuario</button>
+      <button onclick="createDemo45()">Crear demo 45 min</button>
+    </div>
   </div>
 
   <!-- LISTA USUARIOS -->
@@ -359,6 +409,9 @@ function drawSessionsChart() {
         <th>ID</th>
         <th>Usuario</th>
         <th>Rol</th>
+        <th>Inicio</th>
+        <th>Fin</th>
+        <th>Estado</th>
         <th>Sesiones</th>
         <th>Acciones</th>
       </tr>
@@ -367,12 +420,135 @@ function drawSessionsChart() {
         <td>${u.id}</td>
         <td>${u.username}</td>
         <td>${u.role}</td>
+        <td>${u.start_date || "-"}</td>
+        <td>${u.end_date || "-"}</td>
+        <td>${u.status || "-"}</td>
         <td>${u.active_sessions}</td>
         <td>
-          <button onclick="deleteUser(${u.id})">Eliminar</button>
+          <div class="table-actions">
+            <button onclick="renewUser(${u.id})">Renovar</button>
+            <button onclick="changePassword(${u.id})">Contraseña</button>
+            <button onclick="editUser(${u.id}, '${u.role}', '${u.start_date || ""}', '${u.end_date || ""}', '${u.status || "activo"}')">Editar</button>
+            <button onclick="deleteUser(${u.id})">Eliminar</button>
+          </div>
         </td>
       </tr>
     `).join("");
+  }
+
+  async function createDemo45() {
+    const username = prompt("Usuario para demo de 45 minutos:");
+    if (!username) return;
+
+    const password = prompt("Contraseña para el demo:");
+    if (!password) return;
+
+    const res = await fetch("/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username,
+        password,
+        role: "user",
+        status: "activo",
+        demo_minutes: 45
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      alert(data.message || "No se pudo crear el demo");
+      return;
+    }
+
+    alert(data.message || "Demo creado");
+    loadUsers();
+  }
+
+  async function changePassword(id) {
+    const password = prompt("Nueva contraseña:");
+    if (!password) return;
+
+    const res = await fetch("/admin/users/" + id + "/password", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      alert(data.message || "No se pudo cambiar la contraseña");
+      return;
+    }
+
+    alert(data.message || "Contraseña actualizada");
+  }
+
+  async function changePassword(id) {
+    const password = prompt("Nueva contraseña:");
+    if (!password) return;
+
+    const res = await fetch("/admin/users/" + id + "/password", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      alert(data.message || "No se pudo cambiar la contraseña");
+      return;
+    }
+
+    alert(data.message || "Contraseña actualizada");
+  }
+
+  async function editUser(id, currentRole, currentStart, currentEnd, currentStatus) {
+    const role = prompt("Rol (user/admin):", currentRole);
+    if (!role) return;
+
+    const start_date = prompt("Fecha inicio (YYYY-MM-DD):", currentStart || "");
+    const end_date = prompt("Fecha fin (YYYY-MM-DD):", currentEnd || "");
+    const status = prompt("Estado (activo/suspendido):", currentStatus || "activo");
+
+    const res = await fetch("/admin/users/" + id, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role,
+        start_date: start_date || null,
+        end_date: end_date || null,
+        status
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      alert(data.message || "No se pudo actualizar");
+      return;
+    }
+
+    alert(data.message || "Usuario actualizado");
+    loadUsers();
+  }
+
+  async function deleteUser(id) {
+    if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
+
+    const res = await fetch("/admin/users/" + id, { method: "DELETE" });
+    const data = await res.json();
+
+    if (!data.ok) {
+      alert(data.message || "No se pudo eliminar");
+      return;
+    }
+
+    alert(data.message || "Usuario eliminado");
+    loadUsers();
   }
 
   async function createUser() {
