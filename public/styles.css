@@ -1005,32 +1005,37 @@ main {
 .fullscreen-active .top-buttons {
   display: flex !important;
   position: fixed;
-  top: 12px;
-  right: 12px;
+  left: 50%;
+  bottom: 18px;
+  top: auto;
+  right: auto;
   z-index: 10001;
   gap: 8px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: min(92vw, 720px);
   padding: 8px;
   border-radius: 18px;
-  background: rgba(10, 14, 24, 0.26);
+  background: rgba(10, 14, 24, 0.55);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-10px);
+  transform: translateX(-50%) translateY(10px);
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .fullscreen-active.show-fullscreen-controls .top-buttons {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 .fullscreen-active .top-buttons button,
 .fullscreen-active .top-buttons a {
-  min-height: 40px;
-  padding: 0 12px;
+  flex: 1 1 auto;
+  min-height: 42px;
+  padding: 0 14px;
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(40,40,40,0.78), rgba(24,24,24,0.82));
   color: #fff;
@@ -1038,16 +1043,11 @@ main {
   box-shadow:
     0 8px 20px rgba(0,0,0,0.22),
     inset 0 1px 0 rgba(255,255,255,0.06);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.2px;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
 }
 
 .fullscreen-active .top-buttons button:hover,
@@ -1328,5 +1328,21 @@ body.fullscreen-active .top-buttons {
   .top-buttons button,
   .top-buttons a {
     width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .fullscreen-active .top-buttons {
+    width: calc(100vw - 24px);
+    bottom: 12px;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .fullscreen-active .top-buttons button,
+  .fullscreen-active .top-buttons a {
+    min-width: calc(50% - 6px);
+    font-size: 11px;
+    padding: 0 10px;
   }
 }
