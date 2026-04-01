@@ -542,7 +542,7 @@ function hideMiniChannels() {
 function updateSoundButtonLabel() {
   if (!soundBtn || !video) return;
 
-  if (!activeChannel || !currentChannelUrl) {
+  if (!activeChannel || !currentChannelUrl || !video.src) {
     soundBtn.textContent = "Audio off";
     return;
   }
@@ -930,7 +930,8 @@ function handleFirstInteraction() {
 
   userInteracted = true;
 
-  if (!activeChannel || !currentChannelUrl) {
+  // No hacer nada si todavía no hay canal cargado
+  if (!activeChannel || !currentChannelUrl || !video.src) {
     video.muted = true;
     updateSoundButtonLabel();
     return;
