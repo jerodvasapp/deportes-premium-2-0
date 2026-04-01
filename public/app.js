@@ -16,6 +16,22 @@ let currentChannelUrl = null;
 let miniChannelsHideTimer = null;
 let fullscreenControlsHideTimer = null;
 
+function showFullscreenControls() {
+  if (!document.body.classList.contains("fullscreen-active")) return;
+
+  document.body.classList.add("show-fullscreen-controls");
+
+  clearTimeout(fullscreenControlsHideTimer);
+  fullscreenControlsHideTimer = setTimeout(() => {
+    document.body.classList.remove("show-fullscreen-controls");
+  }, 3000);
+}
+
+function hideFullscreenControls() {
+  clearTimeout(fullscreenControlsHideTimer);
+  document.body.classList.remove("show-fullscreen-controls");
+}
+
 const video = document.getElementById("streamVideo");
 if (video) {
   video.preload = "metadata";
@@ -580,11 +596,11 @@ async function loadStream(channel) {
         currentHls = new Hls({
           enableWorker: true,
           lowLatencyMode: false,
-          backBufferLength: 45,
-          maxBufferLength: 30,
-          maxMaxBufferLength: 60,
-          liveSyncDurationCount: 4,
-          liveMaxLatencyDurationCount: 8,
+          backBufferLength: 20,
+          maxBufferLength: 15,
+          maxMaxBufferLength: 30,
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 5,
           fragLoadingTimeOut: 15000,
           manifestLoadingTimeOut: 10000,
           levelLoadingTimeOut: 10000,
@@ -1001,3 +1017,29 @@ renderFullscreenMiniChannels();
 renderGroupedChannels(CHANNELS_PROXIED);
 updateSoundButtonLabel();
 updateFullscreenButtonLabel();
+
+if (streamContainer) {
+  streamContainer.addEventListener("mousemove", () => {
+    if (document.body.classList.contains("fullscreen-active")) {
+      showFullscreenControls();
+    }
+  });
+
+  streamContainer.addEventListener("click", () => {
+    if (document.body.classList.contains("fullscreen-active")) {
+      showFullscreenControls();
+    }
+  });
+
+  streamContainer.addEventListener("touchstart", () => {
+    if (document.body.classList.contains("fullscreen-active")) {
+      showFullscreenControls();
+    }
+  }, { passive: true });
+
+  streamContainer.addEventListener("touchend", () => {
+    if (document.body.classList.contains("fullscreen-active")) {
+      showFullscreenControls();
+    }
+  }, { passive: true });
+}

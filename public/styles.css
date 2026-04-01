@@ -403,6 +403,39 @@ main {
   margin-top: 14px;
 }
 
+@media (max-width: 768px) {
+  .top-buttons {
+    display: flex !important;
+    position: fixed;
+    right: 10px;
+    bottom: 14px;
+    z-index: 10002;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100vw - 20px);
+  }
+
+  .top-buttons button,
+  .top-buttons a {
+    min-height: 38px;
+    padding: 0 10px;
+    border-radius: 10px;
+    background: rgba(30, 30, 30, 0.82);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  body.fullscreen-active .top-buttons {
+    top: 12px;
+    right: 12px;
+    bottom: auto;
+  }
+}
+
 .top-buttons button,
 .top-buttons a {
   display: inline-flex;
