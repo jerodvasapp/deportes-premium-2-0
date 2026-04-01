@@ -1300,3 +1300,33 @@ body.fullscreen-active .top-buttons {
     margin-top: 0;
   }
 }
+
+@media (max-width: 900px) {
+  #botonesIzquierda {
+    display: none;
+  }
+
+  body.mobile-channels-open #botonesIzquierda {
+    display: block;
+    order: 2;
+    margin-top: 12px;
+  }
+
+  body.mobile-channels-open #categoriaContainer {
+    display: block;
+  }
+
+  .top-buttons {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    position: static !important;
+    max-width: 100% !important;
+    margin-top: 14px;
+  }
+
+  .top-buttons button,
+  .top-buttons a {
+    width: 100%;
+  }
+}
