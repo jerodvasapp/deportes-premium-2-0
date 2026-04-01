@@ -16,21 +16,6 @@ let currentChannelUrl = null;
 let miniChannelsHideTimer = null;
 let fullscreenControlsHideTimer = null;
 
-function showFullscreenControls() {
-  if (!document.body.classList.contains("fullscreen-active")) return;
-
-  document.body.classList.add("show-fullscreen-controls");
-
-  clearTimeout(fullscreenControlsHideTimer);
-  fullscreenControlsHideTimer = setTimeout(() => {
-    document.body.classList.remove("show-fullscreen-controls");
-  }, 3000);
-}
-
-function hideFullscreenControls() {
-  clearTimeout(fullscreenControlsHideTimer);
-  document.body.classList.remove("show-fullscreen-controls");
-}
 
 const video = document.getElementById("streamVideo");
 if (video) {
@@ -751,13 +736,6 @@ function renderGroupedChannels(channels) {
       }
     };
 
-    function ensureIptvVisible() {
-      if (!iptvBottomBar) return;
-
-      if (!document.body.classList.contains("fullscreen-active")) {
-        iptvBottomBar.classList.remove("iptv-hidden");
-      }
-    }
 
     header.addEventListener("click", toggle);
     header.addEventListener("keydown", (event) => {
@@ -794,6 +772,10 @@ function renderGroupedChannels(channels) {
       button.addEventListener("click", () => {
         setActiveChannel(button);
         loadStream(channel);
+
+        if (isMobileLayout() && !document.body.classList.contains("fullscreen-active")) {
+          closeMobileChannelsPanel();
+        }
       });
 
       content.appendChild(button);
@@ -834,44 +816,50 @@ if (searchInput) {
 async function toggleFullscreen() {
   if (!fullscreenBtn) return;
 
+  const root = document.documentElement;
+  const currentFullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+
   try {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
-      document.body.classList.add("fullscreen-active");
-      hideMiniChannels();
-      showFullscreenControls();
-    } else {
+    if (!currentFullscreenElement) {
+      if (root.requestFullscreen) {
+        await root.requestFullscreen();
+      } else if (root.webkitRequestFullscreen) {
+        root.webkitRequestFullscreen();
+      }
+    } else if (document.exitFullscreen) {
       await document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
     }
   } catch (error) {
     console.warn("No se pudo cambiar pantalla completa:", error);
   }
+}
+
+function syncFullscreenState() {
+  const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+  document.body.classList.toggle("fullscreen-active", isFullscreen);
+
+  if (isFullscreen) {
+    hideMiniChannels();
+    showFullscreenControls();
+  } else {
+    hideMiniChannels();
+    hideFullscreenControls();
+    showIptvBar();
+  }
 
   updateFullscreenButtonLabel();
+  syncChannelsToggleLabel();
 }
 
 if (fullscreenBtn) {
   fullscreenBtn.addEventListener("click", toggleFullscreen);
 }
 
-async function toggleFullscreen() {
-  if (!fullscreenBtn) return;
-
-  try {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
-      document.body.classList.add("fullscreen-active");
-      hideMiniChannels();
-      showFullscreenControls();
-    } else {
-      await document.exitFullscreen();
-    }
-  } catch (error) {
-    console.warn("No se pudo cambiar pantalla completa:", error);
-  }
-
-  updateFullscreenButtonLabel();
-}
+document.addEventListener("fullscreenchange", syncFullscreenState);
+document.addEventListener("webkitfullscreenchange", syncFullscreenState);
 
 if (soundBtn && video) {
   soundBtn.addEventListener("click", () => {
@@ -901,12 +889,55 @@ if (refreshBtn && video) {
   });
 }
 
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 900px)").matches;
+}
+
+function syncChannelsToggleLabel() {
+  if (!channelsToggleBtn) return;
+
+  if (document.body.classList.contains("fullscreen-active")) {
+    channelsToggleBtn.textContent = document.body.classList.contains("show-mini-channels")
+      ? "Ocultar canales"
+      : "Canales";
+    return;
+  }
+
+  if (isMobileLayout()) {
+    channelsToggleBtn.textContent = document.body.classList.contains("mobile-channels-open")
+      ? "Ocultar canales"
+      : "Canales";
+    return;
+  }
+
+  channelsToggleBtn.textContent = "Canales";
+}
+
+function closeMobileChannelsPanel() {
+  document.body.classList.remove("mobile-channels-open");
+  syncChannelsToggleLabel();
+}
+
+function toggleMobileChannelsPanel() {
+  document.body.classList.toggle("mobile-channels-open");
+  syncChannelsToggleLabel();
+}
+
 if (channelsToggleBtn) {
   channelsToggleBtn.addEventListener("click", () => {
-    if (document.body.classList.contains("show-mini-channels")) {
-      hideMiniChannels();
-    } else {
-      showMiniChannels();
+    if (document.body.classList.contains("fullscreen-active")) {
+      if (document.body.classList.contains("show-mini-channels")) {
+        hideMiniChannels();
+      } else {
+        showMiniChannels();
+      }
+
+      syncChannelsToggleLabel();
+      return;
+    }
+
+    if (isMobileLayout()) {
+      toggleMobileChannelsPanel();
     }
   });
 }
@@ -1003,6 +1034,15 @@ renderFullscreenMiniChannels();
 renderGroupedChannels(CHANNELS_PROXIED);
 updateSoundButtonLabel();
 updateFullscreenButtonLabel();
+syncChannelsToggleLabel();
+
+window.addEventListener("resize", () => {
+  if (!isMobileLayout()) {
+    document.body.classList.remove("mobile-channels-open");
+  }
+
+  syncChannelsToggleLabel();
+});
 
 if (streamContainer) {
   streamContainer.addEventListener("mousemove", () => {
