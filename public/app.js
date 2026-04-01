@@ -35,6 +35,11 @@ function hideFullscreenControls() {
 const video = document.getElementById("streamVideo");
 if (video) {
   video.preload = "metadata";
+  video.controls = false;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.setAttribute("webkit-playsinline", "");
+  video.setAttribute("x5-playsinline", "");
 }
 
 const leftContainer = document.getElementById("categoriaContainer");
@@ -829,42 +834,17 @@ if (searchInput) {
 async function toggleFullscreen() {
   if (!fullscreenBtn) return;
 
-  if (!document.fullscreenElement) {
-    try {
-      await document.documentElement.requestFullscreen();
-      document.body.classList.add("fullscreen-active");
-    } catch (error) {
-      console.warn("No se pudo activar pantalla completa:", error);
-    }
-  } else {
-    try {
-      await document.exitFullscreen();
-    } catch (error) {
-      console.warn("No se pudo salir de pantalla completa:", error);
-    }
-  }
-
-  updateFullscreenButtonLabel();
-}
-
-async function toggleFullscreen() {
-  if (!fullscreenBtn) return;
-
-  if (!document.fullscreenElement) {
-    try {
+  try {
+    if (!document.fullscreenElement) {
       await document.documentElement.requestFullscreen();
       document.body.classList.add("fullscreen-active");
       hideMiniChannels();
       showFullscreenControls();
-    } catch (error) {
-      console.warn("No se pudo activar pantalla completa:", error);
-    }
-  } else {
-    try {
+    } else {
       await document.exitFullscreen();
-    } catch (error) {
-      console.warn("No se pudo salir de pantalla completa:", error);
     }
+  } catch (error) {
+    console.warn("No se pudo cambiar pantalla completa:", error);
   }
 
   updateFullscreenButtonLabel();
@@ -874,24 +854,24 @@ if (fullscreenBtn) {
   fullscreenBtn.addEventListener("click", toggleFullscreen);
 }
 
-document.addEventListener("fullscreenchange", () => {
+async function toggleFullscreen() {
   if (!fullscreenBtn) return;
 
-  if (!document.fullscreenElement) {
-    document.body.classList.remove("fullscreen-active");
-    document.body.classList.remove("show-mini-channels");
-    document.body.classList.remove("show-fullscreen-controls");
-    clearTimeout(iptvBarTimer);
-    clearTimeout(miniChannelsHideTimer);
-    clearTimeout(fullscreenControlsHideTimer);
-  } else {
-    document.body.classList.add("fullscreen-active");
-    hideMiniChannels();
-    showFullscreenControls();
+  try {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+      document.body.classList.add("fullscreen-active");
+      hideMiniChannels();
+      showFullscreenControls();
+    } else {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    console.warn("No se pudo cambiar pantalla completa:", error);
   }
 
   updateFullscreenButtonLabel();
-});
+}
 
 if (soundBtn && video) {
   soundBtn.addEventListener("click", () => {
@@ -999,17 +979,23 @@ function renderFullscreenMiniChannels() {
       }
     });
 
+    streamContainer.addEventListener("click", () => {
+      if (document.body.classList.contains("fullscreen-active")) {
+        showFullscreenControls();
+      }
+    });
+
     streamContainer.addEventListener("touchstart", () => {
       if (document.body.classList.contains("fullscreen-active")) {
         showFullscreenControls();
       }
     }, { passive: true });
 
-    streamContainer.addEventListener("click", () => {
+    streamContainer.addEventListener("touchend", () => {
       if (document.body.classList.contains("fullscreen-active")) {
         showFullscreenControls();
       }
-    });
+    }, { passive: true });
   }
 }
 

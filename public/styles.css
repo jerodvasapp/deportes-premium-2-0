@@ -1015,7 +1015,6 @@ main {
   background: rgba(10, 14, 24, 0.26);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-
   opacity: 0;
   pointer-events: none;
   transform: translateY(-10px);
@@ -1114,4 +1113,31 @@ main {
   font-weight: 700;
   letter-spacing: 0.2px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+@media (max-width: 768px) {
+  body:not(.fullscreen-active) .top-buttons {
+    display: flex !important;
+    position: static !important;
+    margin-top: 12px;
+    gap: 8px;
+    justify-content: center;
+    background: transparent !important;
+    padding: 0 !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+  }
+
+  body:not(.fullscreen-active) #channelsToggleBtn,
+  body:not(.fullscreen-active) #prevChannelBtn,
+  body:not(.fullscreen-active) #nextChannelBtn,
+  body:not(.fullscreen-active) #refreshBtn,
+  body:not(.fullscreen-active) #soundBtn {
+    display: none !important;
+  }
+
+  body:not(.fullscreen-active) #fullscreenBtn {
+    display: inline-flex !important;
+  }
 }
