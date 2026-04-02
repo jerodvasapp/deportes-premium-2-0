@@ -424,12 +424,9 @@
   </div>
 
   <script>
-    fetch("/api/session")
-      .then((res) => {
-        if (res.ok) {
-          window.location.href = "/";
-        }
-      })
+    fetch("/api/session", {
+      credentials: "include"
+    })
       .catch(() => {});
 
     const loginForm = document.getElementById("loginForm");
@@ -479,6 +476,7 @@
       try {
         const response = await fetch("/login", {
           method: "POST",
+          credentials: "include", // 🔥 ESTA LÍNEA ES LA CLAVE
           headers: {
             "Content-Type": "application/json"
           },
