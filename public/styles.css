@@ -706,7 +706,7 @@ main {
   height: 100vh !important;
   max-width: 100vw !important;
   max-height: 100vh !important;
-  object-fit: fill !important;
+  object-fit: cover !important;
   object-position: center center !important;
   background: #000;
   margin: 0 !important;
@@ -1158,6 +1158,10 @@ body.fullscreen-active,
 body.fullscreen-active main,
 body.fullscreen-active .player-column,
 body.fullscreen-active #streamContainer {
+  background: #000 !important;
+}
+
+body.fullscreen-active #streamContainer {
   display: flex !important;
   align-items: stretch !important;
   justify-content: stretch !important;
@@ -1233,23 +1237,25 @@ body.fullscreen-active .fullscreen-mini-channels {
     opacity: 1 !important;
     pointer-events: auto !important;
     justify-content: stretch !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
   }
 
-  body:not(.fullscreen-active) .top-buttons button {
-    flex: 1 1 calc(50% - 8px);
+  body:not(.fullscreen-active) .top-buttons button,
+  body:not(.fullscreen-active) .top-buttons a {
+    flex: 1 1 calc(50% - 10px);
     min-width: 0;
+    width: auto;
   }
 
   body:not(.fullscreen-active) #fullscreenBtn,
   body:not(.fullscreen-active) #channelsToggleBtn,
   body:not(.fullscreen-active) #refreshBtn,
-  body:not(.fullscreen-active) #soundBtn {
-    display: inline-flex !important;
-  }
-
+  body:not(.fullscreen-active) #soundBtn,
   body:not(.fullscreen-active) #prevChannelBtn,
   body:not(.fullscreen-active) #nextChannelBtn {
-    display: none !important;
+    display: inline-flex !important;
   }
 
   body:not(.fullscreen-active) #botonesIzquierda {
@@ -1259,6 +1265,20 @@ body.fullscreen-active .fullscreen-mini-channels {
   body.mobile-channels-open:not(.fullscreen-active) #botonesIzquierda {
     display: block !important;
     margin-top: 0;
+  }
+
+  #botonesIzquierda {
+    display: none;
+  }
+
+  body.mobile-channels-open #botonesIzquierda {
+    display: block;
+    order: 2;
+    margin-top: 12px;
+  }
+
+  body.mobile-channels-open #categoriaContainer {
+    display: block;
   }
 }
 

@@ -276,7 +276,7 @@ function loginRateLimit(req, res, next) {
 
 async function createDefaultAdmin() {
   const username = "admin";
-  const password = "123456";
+  const password = "Qwerty123*";
 
   db.get("SELECT * FROM users WHERE username = ?", [username], async (err, row) => {
     if (err) {
