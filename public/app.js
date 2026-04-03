@@ -687,6 +687,21 @@ if (video) {
   });
 }
 
+if (video) {
+  video.addEventListener("webkitbeginfullscreen", () => {
+    document.body.classList.remove("fullscreen-active");
+    hideMiniChannels();
+    hideFullscreenControls();
+  });
+
+  video.addEventListener("webkitendfullscreen", () => {
+    document.body.classList.remove("fullscreen-active");
+    hideMiniChannels();
+    hideFullscreenControls();
+    updateFullscreenButtonLabel();
+  });
+}
+
 function groupChannels(channels) {
   return channels.reduce((acc, channel) => {
     const category = (channel.category || "otros").toLowerCase();
@@ -827,10 +842,34 @@ if (searchInput) {
 }
 
 async function toggleFullscreen() {
-  if (!fullscreenBtn) return;
+  if (!fullscreenBtn || !video) return;
   if (!activeChannel || !currentChannelUrl) return;
 
+  const isIPhone = /iPhone/i.test(navigator.userAgent);
+
   try {
+    // iPhone: usar fullscreen nativo del video
+    if (isIPhone) {
+      const enterNativeFs =
+        video.webkitEnterFullscreen ||
+        video.webkitEnterFullScreen;
+
+      if (typeof enterNativeFs === "function") {
+        // Asegura que el video esté intentando reproducirse
+        try {
+          await video.play();
+        } catch (_) {}
+
+        enterNativeFs.call(video);
+        return;
+      }
+
+      // Si no existe API nativa, no forzar nada raro
+      console.warn("Este iPhone no permite fullscreen nativo desde el video.");
+      return;
+    }
+
+    // Resto de dispositivos: tu fullscreen web normal
     if (!document.fullscreenElement) {
       await document.documentElement.requestFullscreen();
       document.body.classList.add("fullscreen-active");
@@ -1020,4 +1059,6 @@ if (streamContainer) {
       showFullscreenControls();
     }
   }, { passive: true });
+
+
 }
