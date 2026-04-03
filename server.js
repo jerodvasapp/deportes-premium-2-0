@@ -8,7 +8,7 @@ const { Readable } = require("stream");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_PATH = process.env.DB_PATH || "./database.db";
+const DB_PATH = process.env.DB_PATH || "/app/data/database.db";
 
 const db = new sqlite3.Database(DB_PATH);
 
