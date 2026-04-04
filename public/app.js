@@ -320,7 +320,7 @@ const CHANNEL_COLORS = [
 ];
 
 const CHANNEL_LOGOS = [
-  { match: "tvazteca", file: "public/img/tvazteca.png", alt: "azteca" }
+  { match: "tvazteca", file: "public/img/tvazteca.png", alt: "azteca" },
   { match: "espn", file: "img/espn.png", alt: "ESPN" },
   { match: "fox sports", file: "img/fox-sports.png", alt: "FOX Sports" },
   { match: "tnt sports", file: "img/tnt.png", alt: "TNT Sports" },
