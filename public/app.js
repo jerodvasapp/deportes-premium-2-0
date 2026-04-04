@@ -290,7 +290,7 @@ const CHANNELS = [
   { name: "Caracol", category: "Nacionales", url: "http://167.17.67.240:8888/caracilfulhd/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Caracol SD", category: "Nacionales", url: "http://167.17.67.240:8888/CARACOLSD/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "RCN", category: "Nacionales", url: "http://167.17.67.240:8888/Rcn/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "TV Azteca deportes", category: "TvAzteca", url: "https://deportes.ksdjugfsddeports.com:9092/MTg2LjExMy4xNTEuMTM2/34_.m3u8?token=w7rGPyniwmmzAKyKCVKOYw&expires=1775371207", type: "hls"}
+  { name: "TV Azteca deportes", category: "Tv Azteca", url: "https://deportes.ksdjugfsddeports.com:9092/MTg2LjExMy4xNTEuMTM2/34_.m3u8?token=w7rGPyniwmmzAKyKCVKOYw&expires=1775371207", type: "hls"}
 ];
 
 const CHANNELS_PROXIED = CHANNELS.map((channel) => ({
@@ -320,7 +320,7 @@ const CHANNEL_COLORS = [
 ];
 
 const CHANNEL_LOGOS = [
-  { match: "tvazteca", file: "public/img/tvazteca.png", alt: "azteca" },
+  { match: "tvazteca", file: "public/img/tvazteca.png", alt: "Tv Azteca" },
   { match: "espn", file: "img/espn.png", alt: "ESPN" },
   { match: "fox sports", file: "img/fox-sports.png", alt: "FOX Sports" },
   { match: "tnt sports", file: "img/tnt.png", alt: "TNT Sports" },
