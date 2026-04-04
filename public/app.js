@@ -299,7 +299,7 @@ const CHANNELS_PROXIED = CHANNELS.map((channel) => ({
 }));
 
 const CHANNEL_COLORS = [
-  { match: "tvazteca", color: "linear-gradient(135deg,  #008f5a, #b0c400)" },
+  { match: "tv Azteca", color: "linear-gradient(135deg,  #008f5a, #b0c400)" },
   { match: "espn", color: "linear-gradient(135deg, #d90429, #ff4d6d)" },
   { match: "fox", color: "linear-gradient(135deg, #0038a8, #3a86ff)" },
   { match: "tnt", color: "linear-gradient(135deg, #6601b962, #f703ff)" },
@@ -320,7 +320,7 @@ const CHANNEL_COLORS = [
 ];
 
 const CHANNEL_LOGOS = [
-  { match: "tvazteca", file: "public/img/tvazteca.png", alt: "Tv Azteca" },
+  { match: "tv Azteca", file: "public/img/tvazteca.png", alt: "Tv Azteca" },
   { match: "espn", file: "img/espn.png", alt: "ESPN" },
   { match: "fox sports", file: "img/fox-sports.png", alt: "FOX Sports" },
   { match: "tnt sports", file: "img/tnt.png", alt: "TNT Sports" },
