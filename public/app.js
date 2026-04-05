@@ -285,7 +285,7 @@ const CHANNELS = [
   { name: "L1 Max", category: "L1max", url: "http://167.17.67.240:8888/La1/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "ECDF", category: "ECDF", url: "http://167.17.67.240:8888/ecdfecuador/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Otros", category: "Otros", url: "https://d63fabad.wurl.com/manifest/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWVzX0ZJRkFQbHVzU3BhbmlzaF9ITFM/ce61c15a-ca22-4d3f-9485-4ae94418925d/3.m3u8", type: "hls" },
-  { name: "Otros 2", category: "Otros", url: "https://14c51.streameasthd.net/paramount1/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=0b9f45e289e3046369b1cfaa815310f1db817a62-73-1775444779-1775390779", type: "hls" },
+  { name: "Cbs Sport", category: "CBS", url: "https://14c51.streameasthd.net/paramount1/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=0b9f45e289e3046369b1cfaa815310f1db817a62-73-1775444779-1775390779", type: "hls" },
   { name: "FTV HD", category: "FTV", url: "https://master.tucableip.com/ftvhd/tracks-v1a1/mono.ts.m3u8", type: "hls" },
   { name: "Sky sports", category: "Sky", url: "http://167.17.67.240:8888/SKYBUNDESLIGA/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Caracol", category: "Nacionales", url: "http://167.17.67.240:8888/caracilfulhd/tracks-v1a1/mono.m3u8", type: "hls" },
@@ -301,7 +301,8 @@ const CHANNELS_PROXIED = CHANNELS.map((channel) => ({
 }));
 
 const CHANNEL_COLORS = [
-  { match: "Paramount", color: "linear-gradient(135deg,  #100da7, #f8f8f6)" },
+  { match: "cbs", color: "linear-gradient(135deg,  #100da7, #f8f8f6)" },
+  { match: "paramount", color: "linear-gradient(135deg,  #100da7, #f8f8f6)" },
   { match: "tv Azteca", color: "linear-gradient(135deg,  #008f5a, #b0c400)" },
   { match: "espn", color: "linear-gradient(135deg, #d90429, #ff4d6d)" },
   { match: "fox", color: "linear-gradient(135deg, #0038a8, #3a86ff)" },
@@ -323,7 +324,8 @@ const CHANNEL_COLORS = [
 ];
 
 const CHANNEL_LOGOS = [
-  { match: "Paramount", file: "/img/paramount.png", alt: "Paramount" },
+  { match: "cbs", file: "/img/cbs.png", alt: "Cbs" },
+  { match: "paramount", file: "/img/paramount.png", alt: "Paramount" },
   { match: "tv Azteca", file: "/img/tvazteca.png", alt: "Tv Azteca" },
   { match: "espn", file: "img/espn.png", alt: "ESPN" },
   { match: "fox sports", file: "img/fox-sports.png", alt: "FOX Sports" },
