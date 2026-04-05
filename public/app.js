@@ -290,6 +290,7 @@ const CHANNELS = [
   { name: "Caracol", category: "Nacionales", url: "http://167.17.67.240:8888/caracilfulhd/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Caracol SD", category: "Nacionales", url: "http://167.17.67.240:8888/CARACOLSD/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "RCN", category: "Nacionales", url: "http://167.17.67.240:8888/Rcn/tracks-v1a1/mono.m3u8", type: "hls" },
+  { name: "Paramount", category: "Paramount UFC", url: "https://8c51.streameasthd.net/paramount1/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=862fae3e8c64462b37d17ab94d686e68c55b416c-de-1775393921-1775339921", type: "hls" },
   { name: "Tv azteca deportes", category: "Tv Azteca", url: "https://deportes.ksdjugfsddeports.com:9092/MTg2LjExMy4xNTEuMTM2/34_.m3u8?token=w7rGPyniwmmzAKyKCVKOYw&expires=1775371207", type: "hls"}
 ];
 
@@ -299,6 +300,7 @@ const CHANNELS_PROXIED = CHANNELS.map((channel) => ({
 }));
 
 const CHANNEL_COLORS = [
+  { match: "Paramount", color: "linear-gradient(135deg,  #100da7, #f8f8f6)" },
   { match: "tv Azteca", color: "linear-gradient(135deg,  #008f5a, #b0c400)" },
   { match: "espn", color: "linear-gradient(135deg, #d90429, #ff4d6d)" },
   { match: "fox", color: "linear-gradient(135deg, #0038a8, #3a86ff)" },
@@ -320,6 +322,7 @@ const CHANNEL_COLORS = [
 ];
 
 const CHANNEL_LOGOS = [
+  { match: "Paramount", file: "/img/paramount.png", alt: "Paramount" },
   { match: "tv Azteca", file: "/img/tvazteca.png", alt: "Tv Azteca" },
   { match: "espn", file: "img/espn.png", alt: "ESPN" },
   { match: "fox sports", file: "img/fox-sports.png", alt: "FOX Sports" },
