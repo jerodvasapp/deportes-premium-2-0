@@ -285,12 +285,13 @@ const CHANNELS = [
   { name: "L1 Max", category: "L1max", url: "http://167.17.67.240:8888/La1/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "ECDF", category: "ECDF", url: "http://167.17.67.240:8888/ecdfecuador/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Otros", category: "Otros", url: "https://d63fabad.wurl.com/manifest/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWVzX0ZJRkFQbHVzU3BhbmlzaF9ITFM/ce61c15a-ca22-4d3f-9485-4ae94418925d/3.m3u8", type: "hls" },
+  { name: "Otros 2", category: "Otros", url: "https://14c51.streameasthd.net/paramount1/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=0b9f45e289e3046369b1cfaa815310f1db817a62-73-1775444779-1775390779", type: "hls" },
   { name: "FTV HD", category: "FTV", url: "https://master.tucableip.com/ftvhd/tracks-v1a1/mono.ts.m3u8", type: "hls" },
   { name: "Sky sports", category: "Sky", url: "http://167.17.67.240:8888/SKYBUNDESLIGA/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Caracol", category: "Nacionales", url: "http://167.17.67.240:8888/caracilfulhd/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Caracol SD", category: "Nacionales", url: "http://167.17.67.240:8888/CARACOLSD/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "RCN", category: "Nacionales", url: "http://167.17.67.240:8888/Rcn/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Paramount", category: "Paramount UFC", url: "https://8c51.streameasthd.net/paramount1/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=862fae3e8c64462b37d17ab94d686e68c55b416c-de-1775393921-1775339921", type: "hls" },
+  { name: "Paramount", category: "Paramount UFC", url: "https://24a1.streameasthd.net/paramount2/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=a08565625a38e3ed715a287b3de46d737d87b8a3-38-1775444716-1775390716", type: "hls" },
   { name: "Tv azteca deportes", category: "Tv Azteca", url: "https://deportes.ksdjugfsddeports.com:9092/MTg2LjExMy4xNTEuMTM2/34_.m3u8?token=w7rGPyniwmmzAKyKCVKOYw&expires=1775371207", type: "hls"}
 ];
 
