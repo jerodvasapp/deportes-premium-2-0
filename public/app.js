@@ -272,7 +272,7 @@ const CHANNELS = [
   { name: "Fox Sports 5", category: "Fox Sports", url: "http://167.17.67.240:8888/foxone1/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Fox Sports 6", category: "Fox Sports", url: "http://167.17.67.240:8888/FOXSPORTSTUBI/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Win sd", category: "Win Sport", url: "http://167.17.67.240:8888/winmassddany/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Win + 4K", category: "Win Sport", url: "http://167.17.67.240:8888/winmas4k/tracks-v1a1/mono.m3u8", type: "hls" },
+  { name: "Win + 4K", category: "Win Sport", url: "https://pecdl1.streameasthd.net/winplus/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=7456d6d3ee1144500da87758b721df1e87bbf02d-57-1775645778-1775591778", type: "hls" },
   { name: "Dazn 1", category: "Dazn", url: "http://167.17.67.240:8888/dazn1/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Dazn 2", category: "Dazn", url: "http://167.17.67.240:8888/DAZNFL/tracks-v1a1/mono.m3u8", type: "hls" },
   { name: "Dazn la liga", category: "Dazn", url: "http://167.17.67.240:8888/DAZN4/tracks-v1a1/mono.m3u8", type: "hls" },
