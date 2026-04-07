@@ -253,7 +253,7 @@ function proxifyChannelUrl(url, type) {
 }
 
 const CHANNELS = [
-  { name: "ESPN 1", category: "deportes espn", url: "http://23.131.184.194:8080/live/codechecker/723737mdbr/472221.m3u8?token=Y1pGZlBub2ZmMkZWWWY0", type: "hls" },
+  { name: "ESPN 1", category: "deportes espn", url: "https://anvtcax.fubohd.com/espn/mono.m3u8?token=1cefc3b8df7a6c08fa4009d318c3e626bb321ab5-44-1775606548-1775588548", type: "hls" },
   { name: "ESPN 2", category: "deportes espn", url: "http://mundo2.pro/live/codechecker/723737mdbr/306386.m3u8", type: "hls" },
   { name: "ESPN 3", category: "deportes espn", url: "http://163.172.70.241:25461/live/megatv55566/565665655656d6vdc/10.m3u8", type: "hls" },
   { name: "ESPN 4", category: "deportes espn", url: "http://mundo2.pro/live/codechecker/723737mdbr/306391.m3u8", type: "hls" },
