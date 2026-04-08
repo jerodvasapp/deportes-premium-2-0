@@ -486,6 +486,7 @@ function attachNativeVideo(channel) {
   const onCanPlay = () => {
     video.removeEventListener("canplay", onCanPlay);
     hideLoadingIndicator();
+    video.muted = true;
     video.play().catch(() => {});
   };
 
@@ -572,6 +573,7 @@ async function loadStream(channel) {
 
         currentHls.on(Hls.Events.MANIFEST_PARSED, () => {
           hideLoadingIndicator();
+          video.muted = true; // 👈 clave para Android TV
           video.play().catch(() => {});
         });
 
