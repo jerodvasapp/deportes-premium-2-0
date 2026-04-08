@@ -226,6 +226,77 @@ function normalizeChannelType(type) {
   return value === "file" ? "file" : "hls";
 }
 
+function parseM3UContent(content) {
+  const text = String(content || "").replace(/\r/g, "");
+  const lines = text.split("\n");
+
+  const channels = [];
+  let pendingMeta = null;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const rawLine = lines[i];
+    const line = String(rawLine || "").trim();
+
+    if (!line) continue;
+
+    if (line.startsWith("#EXTINF")) {
+      const tvgNameMatch = line.match(/tvg-name="([^"]*)"/i);
+      const groupTitleMatch = line.match(/group-title="([^"]*)"/i);
+      const commaIndex = line.lastIndexOf(",");
+      const displayName = commaIndex >= 0 ? line.slice(commaIndex + 1).trim() : "";
+
+      pendingMeta = {
+        name:
+          (tvgNameMatch && tvgNameMatch[1] && tvgNameMatch[1].trim()) ||
+          displayName ||
+          "Sin nombre",
+        category:
+          (groupTitleMatch && groupTitleMatch[1] && groupTitleMatch[1].trim()) ||
+          "Otros"
+      };
+
+      continue;
+    }
+
+    if (line.startsWith("#")) {
+      continue;
+    }
+
+    if (/^https?:\/\//i.test(line)) {
+      const url = line.trim();
+      const lowerUrl = url.toLowerCase();
+
+      const channel = {
+        name: pendingMeta?.name || "Sin nombre",
+        category: pendingMeta?.category || "Otros",
+        url,
+        type: lowerUrl.includes(".m3u8") ? "hls" : "file"
+      };
+
+      channels.push(channel);
+      pendingMeta = null;
+    }
+  }
+
+  return channels;
+}
+
+async function fetchTextFromUrl(url) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept": "text/plain, application/x-mpegURL, application/vnd.apple.mpegurl, */*"
+    },
+    signal: AbortSignal.timeout(30000)
+  });
+
+  if (!response.ok) {
+    throw new Error(`No se pudo descargar la lista: ${response.status}`);
+  }
+
+  return response.text();
+}
+
 function requireAuth(req, res, next) {
   if (!req.session || !req.session.user || !req.sessionID) {
     return res.redirect("/login.html");
@@ -961,6 +1032,168 @@ app.post("/api/close-session", async (req, res) => {
   } catch (error) {
     console.error("Error en /api/close-session:", error);
     return res.status(500).json({ ok: false, message: "Error cerrando la sesión" });
+  }
+});
+
+//
+// importar m3u
+//
+
+app.post("/admin/channels/import-m3u", requireAdmin, async (req, res) => {
+  try {
+    const { m3uText, playlistUrl, replaceExisting, defaultCategory } = req.body;
+
+    let content = "";
+
+    if (typeof m3uText === "string" && m3uText.trim()) {
+      content = m3uText.trim();
+    } else if (typeof playlistUrl === "string" && playlistUrl.trim()) {
+      content = await fetchTextFromUrl(playlistUrl.trim());
+    } else {
+      return res.status(400).json({
+        ok: false,
+        message: "Debes pegar el contenido M3U o una URL de playlist"
+      });
+    }
+
+    const parsedChannels = parseM3UContent(content);
+
+    if (!parsedChannels.length) {
+      return res.status(400).json({
+        ok: false,
+        message: "No se encontraron canales válidos en la lista M3U"
+      });
+    }
+
+    const safeDefaultCategory =
+      typeof defaultCategory === "string" && defaultCategory.trim()
+        ? defaultCategory.trim()
+        : "";
+
+    db.serialize(() => {
+      db.run("BEGIN IMMEDIATE TRANSACTION", (beginErr) => {
+        if (beginErr) {
+          console.error("Error iniciando importación M3U:", beginErr);
+          return res.status(500).json({
+            ok: false,
+            message: "No se pudo iniciar la importación"
+          });
+        }
+
+        const rollback = (message, error) => {
+          db.run("ROLLBACK", () => {
+            if (error) {
+              console.error(message, error);
+            }
+            return res.status(500).json({ ok: false, message });
+          });
+        };
+
+        const continueImport = () => {
+          let processed = 0;
+          let inserted = 0;
+          let updated = 0;
+
+          const next = () => {
+            if (processed >= parsedChannels.length) {
+              return db.run("COMMIT", (commitErr) => {
+                if (commitErr) {
+                  return rollback("No se pudo completar la importación", commitErr);
+                }
+
+                return res.json({
+                  ok: true,
+                  message: `Importación completada. Insertados: ${inserted}, actualizados: ${updated}`,
+                  inserted,
+                  updated,
+                  total: parsedChannels.length
+                });
+              });
+            }
+
+            const item = parsedChannels[processed];
+            processed += 1;
+
+            const name = String(item.name || "").trim();
+            const category = safeDefaultCategory || String(item.category || "Otros").trim() || "Otros";
+            const url = String(item.url || "").trim();
+            const type = normalizeChannelType(item.type);
+
+            db.get(
+              `SELECT id FROM channels WHERE LOWER(name) = LOWER(?)`,
+              [name],
+              (findErr, existing) => {
+                if (findErr) {
+                  return rollback("Error buscando canal existente", findErr);
+                }
+
+                if (existing) {
+                  db.run(
+                    `UPDATE channels
+                     SET category = ?, url = ?, type = ?, is_active = 1, updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?`,
+                    [category, url, type, existing.id],
+                    (updateErr) => {
+                      if (updateErr) {
+                        return rollback("Error actualizando canal", updateErr);
+                      }
+
+                      updated += 1;
+                      next();
+                    }
+                  );
+                } else {
+                  db.get(
+                    `SELECT COALESCE(MAX(sort_order), 0) + 1 AS nextSort FROM channels`,
+                    [],
+                    (sortErr, sortRow) => {
+                      if (sortErr) {
+                        return rollback("Error calculando orden del canal", sortErr);
+                      }
+
+                      db.run(
+                        `INSERT INTO channels
+                         (name, category, url, type, is_active, sort_order, updated_at)
+                         VALUES (?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)`,
+                        [name, category, url, type, sortRow?.nextSort || 0],
+                        (insertErr) => {
+                          if (insertErr) {
+                            return rollback("Error insertando canal", insertErr);
+                          }
+
+                          inserted += 1;
+                          next();
+                        }
+                      );
+                    }
+                  );
+                }
+              }
+            );
+          };
+
+          next();
+        };
+
+        if (Number(replaceExisting)) {
+          db.run(`DELETE FROM channels`, [], (deleteErr) => {
+            if (deleteErr) {
+              return rollback("No se pudo limpiar la lista actual", deleteErr);
+            }
+
+            continueImport();
+          });
+        } else {
+          continueImport();
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Error en /admin/channels/import-m3u:", error);
+    return res.status(500).json({
+      ok: false,
+      message: error.message || "Error importando lista M3U"
+    });
   }
 });
 

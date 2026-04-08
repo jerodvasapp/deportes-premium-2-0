@@ -6,6 +6,30 @@
   <title>Administrar canales</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
+
+    .m3u-textarea-wrap {
+  margin-top: 12px;
+}
+
+.m3u-textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  resize: vertical;
+}
+
+.import-inline-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 14px;
+}
+
     body {
       padding: 24px;
     }
@@ -175,6 +199,32 @@
     </div>
 
     <div class="admin-card">
+    <h3>Importar lista M3U</h3>
+
+    <div class="admin-grid">
+        <input id="playlistUrl" placeholder="URL de playlist M3U (opcional)" />
+        <input id="defaultCategory" placeholder="Categoría por defecto (opcional)" />
+    </div>
+
+    <div class="m3u-textarea-wrap">
+    <textarea
+        id="m3uText"
+        class="m3u-textarea"
+        placeholder="O pega aquí el contenido completo de tu lista M3U"
+    ></textarea>
+    </div>
+
+    <div class="admin-actions">
+    <label class="import-inline-check">
+        <input id="replaceExisting" type="checkbox" />
+        Reemplazar canales existentes
+    </label>
+
+    <button class="admin-btn" type="button" id="importM3uBtn">Importar M3U</button>
+    </div>
+    </div>
+
+    <div class="admin-card">
       <h3>Lista de canales</h3>
       <div id="message"></div>
       <table>
@@ -207,6 +257,11 @@
     const tableBody = document.getElementById("channelsTableBody");
     const resetBtn = document.getElementById("resetBtn");
     const messageBox = document.getElementById("message");
+    const playlistUrlInput = document.getElementById("playlistUrl");
+    const defaultCategoryInput = document.getElementById("defaultCategory");
+    const m3uTextInput = document.getElementById("m3uText");
+    const replaceExistingInput = document.getElementById("replaceExisting");
+    const importM3uBtn = document.getElementById("importM3uBtn");
 
     let channelsCache = [];
 
@@ -330,6 +385,55 @@
     });
 
     resetBtn.addEventListener("click", resetForm);
+
+    if (importM3uBtn) {
+    importM3uBtn.addEventListener("click", async () => {
+        const payload = {
+        playlistUrl: playlistUrlInput ? playlistUrlInput.value.trim() : "",
+        defaultCategory: defaultCategoryInput ? defaultCategoryInput.value.trim() : "",
+        m3uText: m3uTextInput ? m3uTextInput.value.trim() : "",
+        replaceExisting: replaceExistingInput && replaceExistingInput.checked ? 1 : 0
+        };
+
+        if (!payload.playlistUrl && !payload.m3uText) {
+        showMessage("Debes pegar el contenido M3U o una URL de playlist", true);
+        return;
+        }
+
+        importM3uBtn.disabled = true;
+        showMessage("Importando lista M3U...");
+
+        try {
+        const response = await fetch("/admin/channels/import-m3u", {
+            method: "POST",
+            headers: {
+            "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!data.ok) {
+            showMessage(data.message || "No se pudo importar la lista", true);
+            return;
+        }
+
+        notifyChannelsUpdated();
+        showMessage(data.message || "Lista importada correctamente");
+
+        if (m3uTextInput) {
+            m3uTextInput.value = "";
+        }
+
+        await loadChannels();
+        } catch (error) {
+        showMessage("Error importando la lista M3U", true);
+        } finally {
+        importM3uBtn.disabled = false;
+        }
+    });
+    }
 
     resetForm();
     loadChannels();
