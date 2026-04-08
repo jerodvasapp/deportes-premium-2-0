@@ -253,7 +253,7 @@ function proxifyChannelUrl(url, type) {
 }
 
 const CHANNELS = [
-  { name: " ESPN 1", category: "deportes espn", url: "https://24a1.streameasthd.net/espn/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=9bcef2782053b0e952c027d00e3df652c5028827-d1-1775646460-1775592460", type: " hls " },
+  { name: " ESPN 1", category: " deportes espn", url: "https://24a1.streameasthd.net/espn/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=9bcef2782053b0e952c027d00e3df652c5028827-d1-1775646460-1775592460", type: " hls " },
   { name: " ESPN 2", category: " deportes espn", url: "https://8c51.streameasthd.net/espn2/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=3da012885bce0ae68be6dcbced2dfe95b5b3be36-d6-1775646544-1775592544", type: " hls " },
   { name: " ESPN 3", category: " deportes espn", url: "https://98ca2.streameasthd.net/espn3/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=b448b21b0c5176af0bbc7ba083db57188a96db7d-19-1775646703-1775592703", type: " hls " },
   { name: " ESPN 4", category: " deportes espn", url: "https://24a1.streameasthd.net/espn4/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=a18e82342c6e845d89efc093e623486c73ed363d-cd-1775646750-1775592750", type: " hls " },
