@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Administrar canales</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      padding: 24px;
+    }
+
+    .admin-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .admin-card {
+      background: rgba(12, 19, 36, 0.88);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .admin-grid input,
+    .admin-grid select {
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+    }
+
+    .admin-grid select option {
+      color: #000;
+    }
+
+    .admin-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .admin-btn {
+      min-height: 42px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #00c2ff, #355cff);
+      color: white;
+      font-weight: 600;
+      border: 0;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .admin-btn.secondary {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    .url-cell {
+      max-width: 380px;
+      word-break: break-all;
+    }
+
+    #message {
+      margin-bottom: 12px;
+      min-height: 20px;
+      font-weight: 600;
+    }
+
+    .table-btn {
+      min-height: 34px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      cursor: pointer;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 16px;
+      }
+
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tr {
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+      }
+
+      td {
+        border: 0;
+        padding: 6px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-wrap">
+    <div class="admin-card">
+      <h2>Administrar canales</h2>
+      <p>Pega aquí tus URLs sin entrar a <strong>app.js</strong>.</p>
+
+      <form id="channelForm">
+        <input type="hidden" id="channelId" />
+
+        <div class="admin-grid">
+          <input id="name" placeholder="Nombre del canal" required />
+          <input id="category" placeholder="Categoría" required />
+          <input id="url" placeholder="URL del canal" required />
+          <label for="type">Tipo</label>
+            <select id="type" aria-label="Tipo de canal" title="Tipo de canal">
+            <option value="hls">hls</option>
+            <option value="file">file</option>
+            </select>
+
+            <label for="sort_order">Orden</label>
+            <input id="sort_order" type="number" placeholder="Orden" value="0" />
+
+            <label for="is_active">Estado</label>
+            <select id="is_active" aria-label="Estado del canal" title="Estado del canal">
+            <option value="1">Activo</option>
+            <option value="0">Inactivo</option>
+            </select>
+        </div>
+
+        <div class="admin-actions">
+          <button class="admin-btn" type="submit">Guardar canal</button>
+          <button class="admin-btn secondary" type="button" id="resetBtn">Limpiar</button>
+          <a class="admin-btn secondary" href="/admin.html">Volver</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="admin-card">
+      <h3>Lista de canales</h3>
+      <div id="message"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+            <th>Orden</th>
+            <th>URL</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="channelsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("channelForm");
+    const channelId = document.getElementById("channelId");
+    const nameInput = document.getElementById("name");
+    const categoryInput = document.getElementById("category");
+    const urlInput = document.getElementById("url");
+    const typeInput = document.getElementById("type");
+    const isActiveInput = document.getElementById("is_active");
+    const sortOrderInput = document.getElementById("sort_order");
+    const tableBody = document.getElementById("channelsTableBody");
+    const resetBtn = document.getElementById("resetBtn");
+    const messageBox = document.getElementById("message");
+
+    let channelsCache = [];
+
+    function showMessage(text, isError = false) {
+      messageBox.textContent = text;
+      messageBox.style.color = isError ? "#ffbcc6" : "#9ff0b8";
+    }
+
+    function resetForm() {
+      channelId.value = "";
+      form.reset();
+      typeInput.value = "hls";
+      isActiveInput.value = "1";
+      sortOrderInput.value = "0";
+    }
+
+    function renderTable() {
+      tableBody.innerHTML = channelsCache.map((channel) => `
+        <tr>
+          <td>${channel.id}</td>
+          <td>${channel.name}</td>
+          <td>${channel.category}</td>
+          <td>${channel.type}</td>
+          <td>${channel.is_active ? "Activo" : "Inactivo"}</td>
+          <td>${channel.sort_order}</td>
+          <td class="url-cell">${channel.url}</td>
+          <td>
+            <button type="button" class="table-btn edit-btn" data-id="${channel.id}">Editar</button>
+            <button type="button" class="table-btn delete-btn" data-id="${channel.id}">Eliminar</button>
+          </td>
+        </tr>
+      `).join("");
+
+      tableBody.querySelectorAll(".edit-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const channel = channelsCache.find((c) => String(c.id) === String(btn.dataset.id));
+          if (!channel) return;
+
+          channelId.value = channel.id;
+          nameInput.value = channel.name;
+          categoryInput.value = channel.category;
+          urlInput.value = channel.url;
+          typeInput.value = channel.type || "hls";
+          isActiveInput.value = channel.is_active ? "1" : "0";
+          sortOrderInput.value = channel.sort_order || 0;
+
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      });
+
+      tableBody.querySelectorAll(".delete-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const ok = confirm("¿Eliminar este canal?");
+          if (!ok) return;
+
+          const response = await fetch("/admin/channels/" + btn.dataset.id, {
+            method: "DELETE"
+          });
+
+          const data = await response.json();
+
+          if (!data.ok) {
+            showMessage(data.message || "No se pudo eliminar", true);
+            return;
+          }
+
+          showMessage("Canal eliminado");
+          await loadChannels();
+        });
+      });
+    }
+
+    async function loadChannels() {
+      const response = await fetch("/admin/channels");
+      const data = await response.json();
+
+      if (!data.ok) {
+        showMessage("No se pudieron cargar los canales", true);
+        return;
+      }
+
+      channelsCache = Array.isArray(data.channels) ? data.channels : [];
+      renderTable();
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        name: nameInput.value.trim(),
+        category: categoryInput.value.trim(),
+        url: urlInput.value.trim(),
+        type: typeInput.value,
+        is_active: Number(isActiveInput.value),
+        sort_order: Number(sortOrderInput.value) || 0
+      };
+
+      const isEditing = !!channelId.value;
+
+      const response = await fetch(
+        isEditing ? "/admin/channels/" + channelId.value : "/admin/channels",
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        showMessage(data.message || "No se pudo guardar", true);
+        return;
+      }
+
+      showMessage(isEditing ? "Canal actualizado" : "Canal creado");
+      resetForm();
+      await loadChannels();
+    });
+
+    resetBtn.addEventListener("click", resetForm);
+
+    resetForm();
+    loadChannels();
+  </script>
+</body>
+</html>

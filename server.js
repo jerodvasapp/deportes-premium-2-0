@@ -50,7 +50,11 @@ app.use(
 
 // Evitar caché en login y admin
 app.use((req, res, next) => {
-  if (req.path === "/login.html" || req.path === "/admin.html") {
+  if (
+    req.path === "/login.html" ||
+    req.path === "/admin.html" ||
+    req.path === "/admin-channels.html"
+  ) {
     res.setHeader("Cache-Control", "no-store");
   }
   next();
@@ -143,6 +147,31 @@ db.serialize(() => {
       }
     }
   );
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS channels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      url TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'hls',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(
+    `CREATE INDEX IF NOT EXISTS idx_channels_active_order
+     ON channels(is_active, sort_order, id)`,
+    [],
+    (err) => {
+      if (err) {
+        console.error("Error creando índice channels:", err.message);
+      }
+    }
+  );
 });
 
 // =========================
@@ -190,6 +219,11 @@ function formatSQLiteDateTime(date) {
   const pad = (n) => String(n).padStart(2, "0");
 
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function normalizeChannelType(type) {
+  const value = String(type || "").trim().toLowerCase();
+  return value === "file" ? "file" : "hls";
 }
 
 function requireAuth(req, res, next) {
@@ -603,6 +637,10 @@ app.get("/admin.html", requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
+app.get("/admin-channels.html", requireAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin-channels.html"));
+});
+
 // =========================
 // Login / sesión
 // =========================
@@ -831,6 +869,26 @@ app.get("/api/session", (req, res) => {
   );
 });
 
+app.get("/api/channels", requireAuth, (req, res) => {
+  db.all(
+    `SELECT id, name, category, url, type
+     FROM channels
+     WHERE is_active = 1
+     ORDER BY sort_order ASC, id ASC`,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ ok: false, message: "Error cargando canales" });
+      }
+
+      return res.json({
+        ok: true,
+        channels: rows
+      });
+    }
+  );
+});
+
 app.post("/logout", (req, res) => {
   if (req.session) {
     const sid = req.sessionID;
@@ -904,6 +962,107 @@ app.post("/api/close-session", async (req, res) => {
     console.error("Error en /api/close-session:", error);
     return res.status(500).json({ ok: false, message: "Error cerrando la sesión" });
   }
+});
+
+// =========================
+// Admin - canales
+// =========================
+
+app.get("/admin/channels", requireAdmin, (req, res) => {
+  db.all(
+    `SELECT id, name, category, url, type, is_active, sort_order, created_at, updated_at
+     FROM channels
+     ORDER BY sort_order ASC, id ASC`,
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ ok: false, message: "Error listando canales" });
+      }
+
+      return res.json({ ok: true, channels: rows });
+    }
+  );
+});
+
+app.post("/admin/channels", requireAdmin, (req, res) => {
+  const { name, category, url, type, is_active, sort_order } = req.body;
+
+  if (!name || !category || !url) {
+    return res.status(400).json({
+      ok: false,
+      message: "Nombre, categoría y URL son obligatorios"
+    });
+  }
+
+  db.run(
+    `INSERT INTO channels (name, category, url, type, is_active, sort_order, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+    [
+      String(name).trim(),
+      String(category).trim(),
+      String(url).trim(),
+      normalizeChannelType(type),
+      Number(is_active) ? 1 : 0,
+      Number(sort_order) || 0
+    ],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ ok: false, message: "No se pudo crear el canal" });
+      }
+
+      return res.json({
+        ok: true,
+        id: this.lastID,
+        message: "Canal creado"
+      });
+    }
+  );
+});
+
+app.put("/admin/channels/:id", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { name, category, url, type, is_active, sort_order } = req.body;
+
+  if (!name || !category || !url) {
+    return res.status(400).json({
+      ok: false,
+      message: "Nombre, categoría y URL son obligatorios"
+    });
+  }
+
+  db.run(
+    `UPDATE channels
+     SET name = ?, category = ?, url = ?, type = ?, is_active = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [
+      String(name).trim(),
+      String(category).trim(),
+      String(url).trim(),
+      normalizeChannelType(type),
+      Number(is_active) ? 1 : 0,
+      Number(sort_order) || 0,
+      id
+    ],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ ok: false, message: "No se pudo actualizar el canal" });
+      }
+
+      return res.json({ ok: true, message: "Canal actualizado" });
+    }
+  );
+});
+
+app.delete("/admin/channels/:id", requireAdmin, (req, res) => {
+  const { id } = req.params;
+
+  db.run(`DELETE FROM channels WHERE id = ?`, [id], function (err) {
+    if (err) {
+      return res.status(500).json({ ok: false, message: "No se pudo eliminar el canal" });
+    }
+
+    return res.json({ ok: true, message: "Canal eliminado" });
+  });
 });
 
 // =========================

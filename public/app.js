@@ -16,6 +16,9 @@ let currentChannelUrl = null;
 let miniChannelsHideTimer = null;
 let fullscreenControlsHideTimer = null;
 
+let CHANNELS = [];
+let CHANNELS_PROXIED = [];
+
 function showFullscreenControls() {
   if (!document.body.classList.contains("fullscreen-active")) return;
 
@@ -252,79 +255,6 @@ function proxifyChannelUrl(url, type) {
   return "/proxy/file?url=" + encodeURIComponent(url);
 }
 
-const CHANNELS = [
-  { name: " ESPN 1 " , category: " deportes espn " , url: " https://8c51.streameasthd.net/espn/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=f35b2caaf35c8cd69e87f8c624b92be0a1b1414f-68-1775693955-1775639955 " , type: " hls " }, 
-  { name: " ESPN 2 " , category: " deportes espn " , url: " https://14c51.streameasthd.net/espn2/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=1f79ce145a0bd19c42cb3766e47b48d0c4460528-1e-1775695850-1775641850 " , type: " hls " }, 
-  { name: " ESPN 3 " , category: " deportes espn " , url: " https://8c51.streameasthd.net/espn3/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=a4911c18922b00ae16547194afa6ec699527f9e5-7a-1775695898-1775641898 " , type: " hls " }, 
-  { name: " ESPN 4 " , category: " deportes espn " , url: " https://8c51.streameasthd.net/espn4/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=21d892a5c0ec536ec3b8b83f48dbb0eb2cc656d2-f0-1775695939-1775641939 " , type: " hls " }, 
-  { name: " ESPN 5 " , category: " deportes espn " , url: " https://8c51.streameasthd.net/espn5/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=02cbc0ad36ff72a6920d90922dfff454d4c737ba-a3-1775695979-1775641979 " , type: " hls " }, 
-  { name: " ESPN 6 " , category: " deportes espn " , url: " https://98ca2.streameasthd.net/espn6/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=d1fece55bb61d9b5ff784808d7294f8a08e233b7-5c-1775696018-1775642018 " , type: " hls " }, 
-  { name: " ESPN 7 " , category: " deportes espn " , url: " https://14c51.streameasthd.net/espn7/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=6b662db60c53ebf58a2de7968b04a2ab7b82e711-58-1775696061-1775642061 " , type: " hls " }, 
-  { name: " Win Sports " , category: " Win Sport " , url: " https://aw1wcm92zq.fubohd.com/winsports/mono.m3u8?token=c913b7a027c9ddf99e879927997f154f8df5279c-68-1775668291-1775650291 " , type: " hls " }, 
-  { name: " Win Sports + " , category: " Win Sport " , url: " https://51a1.streameasthd.net/winplus2/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=34f7e0e52eef298cedc4edf2a41ab689e7a4041a-8f-1775696270-1775642270 " , type: " hls " }, 
-  { name: " Dsports " , category: " Dgo " , url: " https://14c51.streameasthd.net/dsports/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=12f7c0568157f79072088ca10e23d37892bce009-fb-1775696418-1775642418 " , type: " hls " }, 
-  { name: " Dsports2 " , category: " Dgo " , url: " https://qzv4jmsc.fubohd.com/dsports2/mono.m3u8?token=3e9799ef99cb52d2b9e19ff388d8bfd5059cdd8b-bc-1775668587-1775650587 " , type: " hls " }, 
-  { name: " Dsports+ " , category: " Dgo " , url: " https://8c51.streameasthd.net/dsportsplus/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=e267c55e4241b8cc31acf0e0a22af928be03d315-55-1775696587-1775642587 " , type: " hls " }, 
-  { name: " Fox Sports 1 ARG " , category: " Fox Sports " , url: " https://98ca2.streameasthd.net/fox1ar/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=d37a9ca006b872292c7122eb636900727912e187-fc-1775696678-1775642678 " , type: " hls " }, 
-  { name: " Fox Sports 2 ARG " , category: " Fox Sports " , url: " https://ag9wzq.fubohd.com/foxsports2/mono.m3u8?token=21aa11dc29bb51a72a9de2ab40ea1299ea89da25-13-1775668821-1775650821 " , type: " hls " }, 
-  { name: " Fox Sports 3 ARG " , category: " Fox Sports " , url: " https://x4bnd7lq.fubohd.com/foxsports3/mono.m3u8?token=b00f4dde854d78bb99034b7ba5774b868f95266a-39-1775668875-1775650875 " , type: " hls " }, 
-  { name: " Fox Sports " , category: " Fox Sports " , url: " https://bgfuzq.fubohd.com/foxdeportes/mono.m3u8?token=3fdabb12d2945c56bd1dee4936a1feb80d88884b-5-1775668940-1775650940 " , type: " hls " }, 
-  { name: " Dazn 1 " , category: " Dazn " , url: " https://rm8zcvk3.fubohd.com/espn/mono.m3u8?token=03f28953fd83a685ab385da9a0f6115e5edd1cfd-b5-1775634276-1775616276 " , type: " hls " }, 
-  { name: " TNT Sports Premium " , category: " TNT Sports " , url: " https://rm8zcvk3.fubohd.com/tntsports/mono.m3u8?token=7942a883de06b83519b82403be888c77aad6b0c0-d0-1775632030-1775614030 " , type: " hls " }, 
-  { name: " TyC Sports " , category: " TyC Sports " , url: " https://x4bnd7lq.fubohd.com/tycsports/mono.m3u8?token=9e1648147f4917bc62c50e88986a8b24493c61af-74-1775632262-1775614262 " , type: " hls " }, 
-  { name: " L1 Max " , category: " L1max " , url: " https://14c51.streameasthd.net/liga1max/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=a7e66be8894ae0ebb20dd261e59bc959b581f45c-78-1775660300-1775606300 " , type: " hls " }, 
-  { name: " Caracol " , category: " Nacionales " , url: " https://wp9xqedt.fubohd.com/caracol/mono.m3u8?token=7b007581a6d7aebd1c86fe9fd131250b73be42db-a4-1775669313-1775651313 " , type: " hls " }, 
-  { name: " RCN " , category: " Nacionales " , url: " https://hls.tdtcloud.xyz/hls/rcnhd/index.m3u8?token=lz5QjFrPfFb0gKftPHD2dw&expires=1775630989 " , type: " hls " }, 
-];
-
-/*const CHANNELS = [
-  { name: " ESPN 1", category: " deportes espn", url: "https://24a1.streameasthd.net/espn/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=9bcef2782053b0e952c027d00e3df652c5028827-d1-1775646460-1775592460", type: " hls " },
-  { name: " ESPN 2", category: " deportes espn", url: "https://8c51.streameasthd.net/espn2/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=3da012885bce0ae68be6dcbced2dfe95b5b3be36-d6-1775646544-1775592544", type: " hls " },
-  { name: " ESPN 3", category: " deportes espn", url: "https://98ca2.streameasthd.net/espn3/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=b448b21b0c5176af0bbc7ba083db57188a96db7d-19-1775646703-1775592703", type: " hls " },
-  { name: " ESPN 4", category: " deportes espn", url: "https://24a1.streameasthd.net/espn4/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=a18e82342c6e845d89efc093e623486c73ed363d-cd-1775646750-1775592750", type: " hls " },
-  { name: " ESPN 5", category: " deportes espn", url: "https://24a1.streameasthd.net/espn5/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=49889d54a56f2a6602d17c778b9c65aebd5294c1-e5-1775646842-1775592842", type: " hls " },
-  { name: " ESPN 6", category: " deportes espn", url: "https://24a1.streameasthd.net/espn6/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=9ede45ca5f897fddb120c2e918118a4c409f0838-a6-1775646923-1775592923", type: " hls " },
-  { name: " ESPN 7", category: " deportes espn", url: "https://pecdl1.streameasthd.net/espn7/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=afb00755f39921b3cc488588db5b24c0f63aef67-1b-1775646967-1775592967", type: " hls " },
-  { name: "Win Sports", category: "Win Sport", url: "https://cgxheq.fubohd.com/winsports/mono.m3u8?token=ec0d1dfd6e88ab102c278ac0e1912c554d2170c4-90-1775620325-1775602325", type: " hls " },
-  { name: "Win Sports +", category: "Win Sport", url: "https://51a1.streameasthd.net/winplus2/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=887b57efba4edf70a819952335c2858e136f5f0b-c5-1775648319-1775594319", type: " hls " },
-  { name: "Win sd", category: "Win Sport", url: "http://167.17.67.240:8888/winmassddany/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Win + 4K", category: "Win Sport", url: "https://pecdl1.streameasthd.net/winplus/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=7456d6d3ee1144500da87758b721df1e87bbf02d-57-1775645778-1775591778", type: "hls" },
-  { name: " Dsports", category: " Dgo", url: " https://14c51.streameasthd.net/dsports/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=41b775efb9ed8d0daed57e3e17843faef4c6bbaf-8a-1775648402-1775594402", type: " hls " },
-  { name: " Dsports+", category: " Dgo", url: " https://24a1.streameasthd.net/dsportsplus/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=2cefd6d0fba6ec59266463acaad735c3da75f352-33-1775648526-1775594526", type: " hls " },
-  { name: " Dsports2", category: " Dgo", url: " https://rm8zcvk3.fubohd.com/dsports2/mono.m3u8?token=b8528c35157baa60df8ea42d84f18f6a068100eb-4e-1775620560-1775602560", type: " hls " },
-  { name: "Fox Sports 1", category: "Fox Sports", url: "https://pecdl1.streameasthd.net/fox1ar/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=d7bf6b2b057a2751865f6e51c0a57a73571f1033-b3-1775656065-1775602065", type: "hls" },
-  { name: "Fox Sports 2", category: "Fox Sports", url: "https://ym9yzq.fubohd.com/foxsports2/mono.m3u8?token=2cd308b6041fff27f470fa5feb26183ac123cd39-6c-1775628342-1775610342", type: "hls" },
-  { name: "Fox Sports 3", category: "Fox Sports", url: "https://rm8zcvk3.fubohd.com/foxsports3/mono.m3u8?token=76597d61c1f693d4823906e3acd880b7845b8e50-4-1775629389-1775611389", type: "hls" },
-  { name: "Fox Sports 4 ", category: "Fox Sports", url: "http://167.17.67.240:8888/foxsportsdiablo/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Fox Sports 5", category: "Fox Sports", url: "http://167.17.67.240:8888/foxone1/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Fox Sports 6", category: "Fox Sports", url: "http://167.17.67.240:8888/FOXSPORTSTUBI/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Dazn 1", category: "Dazn", url: "http://167.17.67.240:8888/dazn1/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Dazn 2", category: "Dazn", url: "http://167.17.67.240:8888/DAZNFL/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Dazn la liga", category: "Dazn", url: "http://167.17.67.240:8888/DAZN4/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Tigo Sports", category: "Tigo Sports", url: "http://167.17.67.240:8888/Tigosports/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "TNT Sports Premium", category: "TNT Sports", url: "http://167.17.67.240:8888/tntsports/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Movistar", category: "Movistar", url: "http://167.17.67.240:8888/MovistarVAMOS/tracks-v1a1/mono.m3u", type: "hls" },
-  { name: "Movistar1", category: "Movistar", url: "http://167.17.67.240:8888/ligacampeones/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Bein Sports", category: "Bein", url: "http://167.17.67.240:8888/beinsports/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "TyC Sports", category: "TyC Sports", url: "https://tv.topmediatv.net:25463/live/TopMediaWeb/bOteTR8ED1/380.m3u8", type: "hls" },
-  { name: "L1 Max", category: "L1max", url: "http://167.17.67.240:8888/La1/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "ECDF", category: "ECDF", url: "http://167.17.67.240:8888/ecdfecuador/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Otros", category: "Otros", url: "https://d63fabad.wurl.com/manifest/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWVzX0ZJRkFQbHVzU3BhbmlzaF9ITFM/ce61c15a-ca22-4d3f-9485-4ae94418925d/3.m3u8", type: "hls" },
-  { name: "Cbs Sport", category: "CBS", url: "https://14c51.streameasthd.net/paramount1/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=0b9f45e289e3046369b1cfaa815310f1db817a62-73-1775444779-1775390779", type: "hls" },
-  { name: "FTV HD", category: "FTV", url: "https://master.tucableip.com/ftvhd/tracks-v1a1/mono.ts.m3u8", type: "hls" },
-  { name: "Sky sports", category: "Sky", url: "http://167.17.67.240:8888/SKYBUNDESLIGA/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Caracol", category: "Nacionales", url: "https://tv.topmediatv.net:25463/live/TopMediaWeb/bOteTR8ED1/2.m3u8", type: "hls" },
-  { name: "Caracol INT", category: "Nacionales", url: "https://tv.topmediatv.net:25463/live/TopMediaWeb/bOteTR8ED1/607.m3u8", type: "hls" },
-  { name: "RCN", category: "Nacionales", url: "http://167.17.67.240:8888/Rcn/tracks-v1a1/mono.m3u8", type: "hls" },
-  { name: "Paramount", category: "Paramount UFC", url: "https://24a1.streameasthd.net/paramount2/tracks-v1a1/mono.m3u8?ip=186.113.151.136&token=a08565625a38e3ed715a287b3de46d737d87b8a3-38-1775444716-1775390716", type: "hls" },
-  { name: "Tv azteca deportes", category: "Tv Azteca", url: "https://deportes.ksdjugfsddeports.com:9092/MTg2LjExMy4xNTEuMTM2/34_.m3u8?token=w7rGPyniwmmzAKyKCVKOYw&expires=1775371207", type: "hls"}
-];*/
-
-const CHANNELS_PROXIED = CHANNELS.map((channel) => ({
-  ...channel,
-  url: proxifyChannelUrl(channel.url, channel.type)
-}));
-
 const CHANNEL_COLORS = [
   { match: "cbs", color: "linear-gradient(135deg,  #100da7, #f8f8f6)" },
   { match: "paramount", color: "linear-gradient(135deg,  #100da7, #f8f8f6)" },
@@ -380,7 +310,7 @@ function getChannelColor(name) {
   const lower = name.toLowerCase();
 
   for (const c of CHANNEL_COLORS) {
-    if (lower.includes(c.match)) {
+    if (lower.includes(c.match.toLowerCase())) {
       return c.color;
     }
   }
@@ -392,7 +322,7 @@ function getChannelLogo(channelName) {
   const name = channelName.toLowerCase();
 
   for (const logo of CHANNEL_LOGOS) {
-    if (name.includes(logo.match)) {
+    if (name.includes(logo.match.toLowerCase())) {
       return logo;
     }
   }
@@ -403,7 +333,6 @@ function getChannelLogo(channelName) {
 function showIptvBar() {
   if (!iptvBottomBar) return;
 
-  // 🔥 SOLO ocultar en fullscreen
   if (!document.body.classList.contains("fullscreen-active")) {
     iptvBottomBar.classList.remove("iptv-hidden");
     return;
@@ -571,7 +500,6 @@ function showMiniChannels() {
 function hideMiniChannels() {
   document.body.classList.remove("show-mini-channels");
 }
-
 
 function updateSoundButtonLabel() {
   if (!soundBtn || !video) return;
@@ -791,14 +719,6 @@ function renderGroupedChannels(channels) {
       }
     };
 
-    function ensureIptvVisible() {
-      if (!iptvBottomBar) return;
-
-      if (!document.body.classList.contains("fullscreen-active")) {
-        iptvBottomBar.classList.remove("iptv-hidden");
-      }
-    }
-
     header.addEventListener("click", toggle);
     header.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -882,14 +802,12 @@ async function toggleFullscreen() {
   const isIPhone = /iPhone/i.test(navigator.userAgent);
 
   try {
-    // iPhone: usar fullscreen nativo del video
     if (isIPhone) {
       const enterNativeFs =
         video.webkitEnterFullscreen ||
         video.webkitEnterFullScreen;
 
       if (typeof enterNativeFs === "function") {
-        // Asegura que el video esté intentando reproducirse
         try {
           await video.play();
         } catch (_) {}
@@ -898,12 +816,10 @@ async function toggleFullscreen() {
         return;
       }
 
-      // Si no existe API nativa, no forzar nada raro
       console.warn("Este iPhone no permite fullscreen nativo desde el video.");
       return;
     }
 
-    // Resto de dispositivos: tu fullscreen web normal
     if (!document.fullscreenElement) {
       await document.documentElement.requestFullscreen();
       document.body.classList.add("fullscreen-active");
@@ -918,7 +834,6 @@ async function toggleFullscreen() {
 
   updateFullscreenButtonLabel();
 }
-
 
 document.addEventListener("fullscreenchange", () => {
   const isFullscreen = !!document.fullscreenElement;
@@ -938,7 +853,6 @@ document.addEventListener("fullscreenchange", () => {
 if (fullscreenBtn) {
   fullscreenBtn.addEventListener("click", toggleFullscreen);
 }
-
 
 if (soundBtn && video) {
   soundBtn.addEventListener("click", () => {
@@ -1003,7 +917,6 @@ function handleFirstInteraction() {
 
   userInteracted = true;
 
-  // No hacer nada si todavía no hay canal cargado
   if (!activeChannel || !currentChannelUrl || !video.src) {
     video.muted = true;
     updateSoundButtonLabel();
@@ -1055,13 +968,50 @@ function renderFullscreenMiniChannels() {
       hideMiniChannels();
     });
   });
-
 }
 
-renderFullscreenMiniChannels();
-renderGroupedChannels(CHANNELS_PROXIED);
-updateSoundButtonLabel();
-updateFullscreenButtonLabel();
+async function loadChannelsFromServer() {
+  try {
+    const response = await fetch("/api/channels");
+
+    if (!response.ok) {
+      throw new Error("No se pudieron cargar los canales");
+    }
+
+    const data = await response.json();
+
+    if (!data.ok || !Array.isArray(data.channels)) {
+      throw new Error("Respuesta inválida del servidor");
+    }
+
+    CHANNELS = data.channels.map((channel) => ({
+      name: String(channel.name || "").trim(),
+      category: String(channel.category || "").trim(),
+      url: String(channel.url || "").trim(),
+      type: String(channel.type || "hls").trim().toLowerCase()
+    }));
+
+    CHANNELS_PROXIED = CHANNELS.map((channel) => ({
+      ...channel,
+      url: proxifyChannelUrl(channel.url, channel.type)
+    }));
+
+    renderFullscreenMiniChannels();
+    renderGroupedChannels(CHANNELS_PROXIED);
+    updateSoundButtonLabel();
+    updateFullscreenButtonLabel();
+  } catch (error) {
+    console.error("Error cargando canales:", error);
+
+    if (leftContainer) {
+      leftContainer.innerHTML = '<div class="empty-state">No se pudieron cargar los canales.</div>';
+    }
+
+    if (rightContainer) {
+      rightContainer.innerHTML = "";
+    }
+  }
+}
 
 window.addEventListener("resize", () => {
   if (window.innerWidth > 900) {
@@ -1093,6 +1043,6 @@ if (streamContainer) {
       showFullscreenControls();
     }
   }, { passive: true });
-
-
 }
+
+loadChannelsFromServer();
